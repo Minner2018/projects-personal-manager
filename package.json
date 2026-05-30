@@ -8,7 +8,10 @@
     "registry:example": "bun scripts/generate-registry-example.ts",
     "programs": "bun scripts/sync-programs.ts",
     "ai-projects": "bun scripts/sync-ai-projects.ts",
-    "check": "bun scripts/check-consistency.ts",
+    "lock:create": "bun scripts/create-lock.ts",
+    "check": "bun run check:consistency && bun run check:concurrency",
+    "check:consistency": "bun scripts/check-consistency.ts",
+    "check:concurrency": "bun scripts/check-concurrency.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

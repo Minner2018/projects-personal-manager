@@ -26,6 +26,10 @@
 /ai/tasks/*
 !/ai/tasks/example_task.md
 
+# AI 并发锁默认只保留在本地，锁协议文档除外
+/ai/locks/*
+!/ai/locks/README.md
+
 # AI 记忆默认只保留在本地，示例记忆除外
 /ai/memory/*
 !/ai/memory/global.example.md
