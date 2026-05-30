@@ -1,0 +1,11 @@
+id: example_program
+name: 示例项目组
+description: 示例项目组用于演示 programs 目录的组织方式。
+members:
+  - example_project
+projects:
+  - id: example_project
+    name: 示例项目
+    status: active
+    ownership: owned
+    relations: null
