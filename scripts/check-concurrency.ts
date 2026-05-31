@@ -120,17 +120,13 @@ function checkLocks(claims) {
       continue;
     }
 
-    for (const field of ["owner", "task", "file", "created_at", "expires_at", "reason"]) {
+    for (const field of ["owner", "file", "created_at", "expires_at", "reason"]) {
       if (!lock[field]) {
         error(`${relPath} missing required field: ${field}`);
       }
     }
 
     const lockedFile = normalizeRepoPath(lock.file);
-    const lockTask = normalizeRepoPath(lock.task);
-    if (lockTask && !fs.existsSync(path.join(root, lockTask))) {
-      warning(`${relPath} references missing task: ${lockTask}`);
-    }
 
     if (lockedFile && path.isAbsolute(lockedFile)) {
       error(`${relPath} file must be a repository-relative path: ${lock.file}`);
@@ -146,9 +142,8 @@ function checkLocks(claims) {
     }
 
     const claimingTasks = claims.get(lockedFile) || [];
-    const conflictingTasks = claimingTasks.filter((task) => task !== lockTask);
-    if (conflictingTasks.length > 0) {
-      error(`AI lock conflict: ${lockedFile} locked by ${lockTask || relPath}, claimed by ${conflictingTasks.join(", ")}`);
+    if (claimingTasks.length > 0) {
+      error(`AI lock conflict: ${lockedFile} locked by ${lock.owner || relPath}, claimed by ${claimingTasks.join(", ")}`);
     }
   }
 }

@@ -8,19 +8,17 @@ const root = path.resolve(scriptDir, "..");
 
 type Options = {
   file?: string;
-  task?: string;
   owner?: string;
   reason?: string;
   hours: number;
 };
 
 function usage() {
-  console.log(`usage: bun run lock:create -- --file <path> --task <path> --owner <id> --reason <text> [--hours 2]
+  console.log(`usage: bun run lock:create -- --file <path> --owner <id> --reason <text> [--hours 2]
 
 required:
   --file    repository-relative path to lock
-  --task    repository-relative task record path
-  --owner   AI or operator identifier
+  --owner   AI or operator instance identifier
   --reason  lock reason
 
 optional:
@@ -48,7 +46,6 @@ function readOptions(args: string[]): Options {
     }
 
     if (arg === "--file") options.file = next;
-    else if (arg === "--task") options.task = next;
     else if (arg === "--owner") options.owner = next;
     else if (arg === "--reason") options.reason = next;
     else if (arg === "--hours") options.hours = Number(next);
@@ -111,21 +108,16 @@ function findExistingLockForFile(file: string) {
 try {
   const options = readOptions(process.argv.slice(2));
   const file = normalizeRepoPath(options.file);
-  const task = normalizeRepoPath(options.task);
   const owner = String(options.owner || "").trim();
   const reason = String(options.reason || "").trim();
 
   assertRepoRelative("file", file);
-  assertRepoRelative("task", task);
   if (!owner) throw new Error("owner is required");
+  if (/[\r\n]/.test(owner)) throw new Error("owner must not contain line breaks");
   if (!reason) throw new Error("reason is required");
+  if (/[\r\n]/.test(reason)) throw new Error("reason must not contain line breaks");
   if (!Number.isFinite(options.hours) || options.hours <= 0) {
     throw new Error(`hours must be a positive number: ${options.hours}`);
-  }
-
-  const taskPath = path.join(root, task);
-  if (!fs.existsSync(taskPath)) {
-    throw new Error(`task file does not exist: ${task}`);
   }
 
   const existingLock = findExistingLockForFile(file);
@@ -137,7 +129,6 @@ try {
   const expiresAt = new Date(createdAt.getTime() + options.hours * 60 * 60 * 1000);
   const lock = {
     owner,
-    task,
     file,
     created_at: formatLocalDate(createdAt),
     expires_at: formatLocalDate(expiresAt),
