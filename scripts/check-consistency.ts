@@ -272,8 +272,8 @@ function checkExamples() {
     "ai/tasks/example_task.md",
     "ai/memory/global.example.md",
     "ai/memory/projects/example_project.md",
-    "human/projects/example_project/示例项目文档.md",
-    "human/未分类/示例文档.md"
+    "reading-resources/projects/example_project/示例项目文档.md",
+    "reading-resources/未分类/示例文档.md"
   ];
 
   for (const item of required) {

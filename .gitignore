@@ -1,6 +1,9 @@
 # 本地生成的项目集索引
 /registry.yaml
 
+# vscode 配置文件
+.vscode/
+
 # 依赖目录
 /node_modules/
 
@@ -12,11 +15,15 @@
 /programs/*
 !/programs/example_program/
 
-# 人类材料默认只保留在本地，示例项目除外
-/human/projects/*
-!/human/projects/example_project/
-/human/未分类/*
-!/human/未分类/示例文档.md
+# 阅读资源默认只保留在本地，示例内容除外
+/reading-resources/*
+!/reading-resources/projects/
+!/reading-resources/未分类/
+/reading-resources/projects/*
+!/reading-resources/projects/example_project/
+!/reading-resources/projects/example_project/**
+/reading-resources/未分类/*
+!/reading-resources/未分类/示例文档.md
 
 # AI 项目摘要默认只保留在本地，示例项目除外
 /ai/projects/*
