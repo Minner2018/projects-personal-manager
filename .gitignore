@@ -7,44 +7,36 @@
 # 依赖目录
 /node_modules/
 
-# 真实项目默认只保留在本地
+# 项目默认只保留在本地
 /projects/*
-!/projects/example_project/
 
-# 真实项目组默认只保留在本地
+# 项目组默认只保留在本地
 /programs/*
-!/programs/example_program/
 
-# 阅读资源默认只保留在本地，示例内容除外
+# 阅读资源默认只保留在本地
 /reading-resources/*
 !/reading-resources/projects/
 !/reading-resources/未分类/
 /reading-resources/projects/*
-!/reading-resources/projects/example_project/
-!/reading-resources/projects/example_project/**
 /reading-resources/未分类/*
-!/reading-resources/未分类/示例文档.md
 
-# AI 项目摘要默认只保留在本地，示例项目除外
+# AI 项目摘要默认只保留在本地
 /ai/projects/*
-!/ai/projects/example_project.md
 
-# AI 任务记录默认只保留在本地，示例任务除外
+# AI 任务记录默认只保留在本地
 /ai/tasks/*
-!/ai/tasks/example_task.md
 
-# AI 并发锁默认只保留在本地，锁协议文档除外
+# AI 并发锁默认只保留在本地
 /ai/locks/*
-!/ai/locks/README.md
 
-# AI 记忆默认只保留在本地，示例记忆除外
+# AI 记忆默认只保留在本地
 /ai/memory/*
-!/ai/memory/global.example.md
 !/ai/memory/projects/
-!/ai/memory/projects/example_project.md
-
-# 仅本地使用的辅助脚本
-/scripts/generate-registry-example.ts
 
 # 脚本备份文件
 *.bak
+
+# 迁移过程中文件
+/old-ai/
+/old-scripts/
+/system-docs/OMP迁移说明.md

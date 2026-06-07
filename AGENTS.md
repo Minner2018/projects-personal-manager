@@ -1,18 +1,33 @@
 # AGENTS.md
 
-## 基础配置
-- 语言：中文
-- 系统: Windows11
-- 常用编码：UTF-8
-- 命令行环境：PowerShell
+## Environment
 
-## 工作流程
+* Language: Simplified Chinese
+* Operating System: Windows 11
+* Shell: PowerShell
+* File Encoding: UTF-8
 
-在第3步前不要执行具体工作内容。
+## Skill Routing
 
-1. 先理解 `ai/global.md`。
-2. AI 在首次开始对话时运行 `bun run agent:id` 获取本轮 `agent_id`，并加入上下文；该 ID 用作锁的 `owner`。
-3. 按任务类型明确角色、工作流和上下文预算。
-4. 按角色和工作流流程执行用户的任务。
-5. 修改文件前按 `ai/workflows/并发协作.md` 检查锁。
-6. 需要系统检查时优先运行对应脚本。
+* [X] 
+Activate skill matched by X.
+
+* [X!]
+Reload skill matched by X, discard workflow drift, and continue the current task under its workflow.
+
+* [E]
+Deactivate the current skill; continue normally.
+
+## Rules
+
+1. Activate skills only by explicit routing syntax.
+2. Match X against route tokens declared in skill metadata.
+3. The active skill persists until exit, switch, or reload, and determines the workflow.
+4. Interpret user instructions through the active skill.
+5. Use the minimum context required.
+6. Do not load unrelated skills.
+7. Switch skills only by explicit routing syntax.
+8. Before activation, read only skill metadata, not workflow body.
+9. Never activate a skill by semantic similarity.
+10. On exit or switch, discard workflow state.
+11. If no skill is active, behave normally.
