@@ -1,5 +1,5 @@
 ---
-name: design
+name: plan
 description: "route tokens: [P]"
 ---
 

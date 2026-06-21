@@ -7,6 +7,18 @@
 * Shell: PowerShell
 * File Encoding: UTF-8
 
+## Local Readable Ignored Paths
+
+Gitignored but readable on request: `reading-resources/`.
+If normal search misses requested documents there, use `rg -u`.
+Do not read other ignored paths unless explicitly requested.
+
+## Generated Document Placement
+
+Put generated documents under the matching `reading-resources/<project>/` folder when project ownership is clear.
+If the matching folder does not exist, create it.
+Use `reading-resources/未分类/` only when ownership is unclear.
+
 ## Skill Routing
 
 Path: .omp/skills/
