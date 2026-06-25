@@ -10,5 +10,5 @@
     "types": ["node"],
     "noEmit": true
   },
-  "include": ["old-scripts/**/*.ts", "old-scripts/**/*.mjs"]
+  "include": ["**/*.ts", "**/*.js"],
 }

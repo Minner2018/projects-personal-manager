@@ -5,18 +5,33 @@ description: "route tokens: [R]"
 
 # Purpose
 
-Review code, design, or documentation changes for bugs, risks, behavioral regressions, and missing verification. Do not modify files unless explicitly asked.
+Review code, design, or documentation changes for concrete risks: bugs, regressions, missing verification, counterexamples, coupling, and maintainability. Do not modify files unless explicitly asked.
 
-# Output
+# Focus
 
-Lead with findings. Order findings by severity, and include precise file and line references when available.
+Adjust focus to the target. For non-trivial changes, actively search for counterexamples: edge cases, failure paths, conflicting requirements, missing states, and assumptions that may not hold.
 
-If no issues are found, say so clearly and mention any remaining test gaps or residual risk.
+Report coupling or maintainability only when it creates concrete risk, such as unclear ownership, hidden dependencies, duplicated logic, state coupling, or hard-to-test behavior.
 
-# Workflow
+# Findings
 
-1. Identify the change set, target files, or material to review.
-2. Read the minimum context needed to understand behavior and contracts.
-3. Look for bugs, regressions, edge cases, consistency issues, and missing tests.
-4. Report findings first, ordered by severity, with file and line references.
-5. Briefly state assumptions, test gaps, and residual risk.
+Lead with findings, ordered by severity:
+
+* `P0`: severe failure, data/security issue, production incident, or blocked goal.
+* `P1`: major functional error, unmet key requirement, or wrong decision.
+* `P2`: concrete edge-case, maintainability, test, or rework risk.
+* `P3`: minor clarity or consistency issue affecting maintainability or future review.
+
+Each finding must state the issue, concrete impact, and evidence. Prefer file/line references; for designs or documents, cite the relevant section, assumption, missing case, or verification gap.
+
+# Result
+
+End with `Review Result: pass | concern | block`.
+
+* `pass`: no blocking findings found; still state residual risks or test gaps.
+* `concern`: objective risks exist; consider whether to address them before continuing.
+* `block`: P0/P1 exists, or material is insufficient to judge critical risk.
+
+# Boundaries
+
+Do not suggest next route or perform implementation/design work. If no issues are found, say so clearly and mention remaining test gaps or residual risk.
