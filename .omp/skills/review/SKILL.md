@@ -11,6 +11,8 @@ Review code, design, or documentation changes for concrete risks: bugs, regressi
 
 Adjust focus to the target. For non-trivial changes, actively search for counterexamples: edge cases, failure paths, conflicting requirements, missing states, and assumptions that may not hold.
 
+Report only issues that apply to the target's documented or observed runtime path. Downgrade or omit excluded-scope, contradicted, or purely hypothetical cases.
+
 Report coupling or maintainability only when it creates concrete risk, such as unclear ownership, hidden dependencies, duplicated logic, state coupling, or hard-to-test behavior.
 
 # Findings

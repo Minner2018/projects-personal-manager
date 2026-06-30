@@ -13,11 +13,11 @@ The main flow owns clarification, decomposition, assignment, tracking, board/Git
 
 The main flow must not take over delegable or assigned planning, research, implementation, testing, or fixing. After assignment ,on that assigned path the main flow may only track progress, update the board, handle escalations.
 
-# Subagents & Route
+# Sub agents & Route
 
-Don't use fork to create subagents. Keep subagents alive and reuse them after creation. Do not release or recreate them unless the human asks or the subagent is unusable.
+Only create subagents when need to use but no corresponding agent exists. Do not release or recreate them unless the human asks or the subagent is unusable.
 
-* `agent_1`: model `5.5-medium`; use route `[P]` and `[R]` for planning, review, and risk detection; do not write code.
+* `agent_1`: model `5.5-high`; use route `[P]` and `[R]` for planning, review, and risk detection; do not write code.
 * `agent_2`: model `5.5-medium`; use route `[T]` for file search, source/context gathering, research, and candidate drafts.
 * `agent_3`: model `5.5-medium`; use route `[I]` and `[F]` for implementation, tests, and fixes.
 
