@@ -1,0 +1,8 @@
+{
+  "maxGlobalConcurrent": 3,
+  "maxPerCallerConcurrent": 1,
+  "maxQueueSeconds": 600,
+  "heartbeatSeconds": 10,
+  "staleAfterSeconds": 30,
+  "maxLeaseSeconds": 7200
+}

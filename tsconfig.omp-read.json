@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": true
+  },
+  "include": [
+    "scripts/omp-text-delegate.ts",
+    "scripts/omp-read-capacity.ts",
+    "scripts/test-omp-text-delegate.ts",
+    "scripts/test-omp-read-capacity.ts",
+    "types/bun-sqlite.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "projects"
+  ]
+}
