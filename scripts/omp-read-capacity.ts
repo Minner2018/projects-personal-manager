@@ -4,12 +4,23 @@ import path from "node:path";
 import { Database, type Statement } from "bun:sqlite";
 
 /**
- * OMP 文本阅读能力的仓库级并发配置。
+ * OMP 文本阅读能力的仓库级运行与并发配置。
  */
+export type OmpReadThinkingLevel =
+  | "off"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
+  | "auto";
+
 export interface OmpReadCapacityConfig {
+  model: string;
+  thinking: OmpReadThinkingLevel;
   maxGlobalConcurrent: number;
   maxPerCallerConcurrent: number;
-  maxQueueSeconds: number;
   heartbeatSeconds: number;
   staleAfterSeconds: number;
   maxLeaseSeconds: number;
@@ -20,7 +31,7 @@ export interface OmpReadCapacityConfig {
  */
 export type OmpReadCapacityErrorCode =
   | "caller_busy"
-  | "capacity_timeout"
+  | "capacity_full"
   | "capacity_config_invalid";
 
 /**
@@ -43,7 +54,6 @@ export interface OmpReadCapacityLease {
   callerId: string;
   callerSlot: number;
   globalSlot: number;
-  queueDurationMs: number;
   attachChildProcess(pid: number): Promise<void>;
   release(): Promise<void>;
 }
@@ -57,11 +67,9 @@ export interface AcquireOmpReadCapacityOptions {
   runId: string;
   config: OmpReadCapacityConfig;
   runtimeRoot?: string;
-  queueTimeoutMsOverride?: number;
   heartbeatIntervalMsOverride?: number;
   staleAfterMsOverride?: number;
   maxLeaseMsOverride?: number;
-  pollIntervalMsOverride?: number;
 }
 
 interface LeaseOwnerRow {
@@ -74,6 +82,11 @@ interface LeaseOwnerRow {
 interface SlotRow {
   slot: number;
 }
+
+type AllocationResult =
+  | { status: "acquired"; callerSlot: number; globalSlot: number }
+  | { status: "caller_busy" }
+  | { status: "capacity_full" };
 
 const DEFAULT_CONFIG_RELATIVE_PATH = path.join(".omp", "omp-read-config.json");
 const DEFAULT_RUNTIME_RELATIVE_PATH = path.join(
@@ -98,8 +111,38 @@ function readInteger(
   return Number(value);
 }
 
+function readModel(value: unknown): string {
+  if (typeof value !== "string" || value.trim() !== value || value.length === 0) {
+    throw new OmpReadCapacityError(
+      "capacity_config_invalid",
+      "model 必须是非空且首尾无空白的 OMP 模型标识。",
+    );
+  }
+  return value;
+}
+
+function readThinkingLevel(value: unknown): OmpReadThinkingLevel {
+  const allowed = new Set<OmpReadThinkingLevel>([
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+    "auto",
+  ]);
+  if (typeof value !== "string" || !allowed.has(value as OmpReadThinkingLevel)) {
+    throw new OmpReadCapacityError(
+      "capacity_config_invalid",
+      "thinking 必须是 off、minimal、low、medium、high、xhigh、max 或 auto。",
+    );
+  }
+  return value as OmpReadThinkingLevel;
+}
+
 /**
- * 读取并校验仓库级 OMP 并发配置。
+ * 读取并校验仓库级 OMP 运行与并发配置。
  *
  * @param projectRoot 当前项目根目录。
  * @param configPath 可选的配置文件路径。
@@ -127,6 +170,8 @@ export async function loadOmpReadCapacityConfig(
 
   const record = parsed as Record<string, unknown>;
   const config: OmpReadCapacityConfig = {
+    model: readModel(record.model),
+    thinking: readThinkingLevel(record.thinking),
     maxGlobalConcurrent: readInteger(
       record.maxGlobalConcurrent,
       "maxGlobalConcurrent",
@@ -139,7 +184,6 @@ export async function loadOmpReadCapacityConfig(
       1,
       32,
     ),
-    maxQueueSeconds: readInteger(record.maxQueueSeconds, "maxQueueSeconds", 0, 3600),
     heartbeatSeconds: readInteger(
       record.heartbeatSeconds,
       "heartbeatSeconds",
@@ -170,12 +214,6 @@ export async function loadOmpReadCapacityConfig(
     throw new OmpReadCapacityError(
       "capacity_config_invalid",
       "staleAfterSeconds 至少应为 heartbeatSeconds 的两倍。",
-    );
-  }
-  if (config.maxLeaseSeconds < config.maxQueueSeconds + 3605) {
-    throw new OmpReadCapacityError(
-      "capacity_config_invalid",
-      "maxLeaseSeconds 必须覆盖最长排队时间和最长 OMP 执行时间。",
     );
   }
   return config;
@@ -265,7 +303,7 @@ function deleteExpiredLeases(
   try {
     for (const owner of staleOwners.all(nowMs - staleAfterMs)) {
       const exceededMaximumAge = nowMs - owner.createdAtMs >= maxLeaseMs;
-      // 排队阶段尚无子进程，以包装器为准；启动后以真正消耗容量的 OMP 子进程为准。
+      // 尚未写入子进程时以包装器为准；启动后以真正消耗容量的 OMP 子进程为准。
       const hasLiveProcess =
         owner.childPid === null
           ? isProcessAlive(owner.ownerPid)
@@ -308,7 +346,6 @@ function runImmediateTransaction<ReturnType>(
 export async function acquireOmpReadCapacity(
   options: AcquireOmpReadCapacityOptions,
 ): Promise<OmpReadCapacityLease> {
-  const queueStartedAt = Date.now();
   const runtimeRoot = path.resolve(
     options.runtimeRoot ?? path.join(options.projectRoot, DEFAULT_RUNTIME_RELATIVE_PATH),
   );
@@ -327,15 +364,12 @@ export async function acquireOmpReadCapacity(
     }
     database.close(true);
   };
-  const queueTimeoutMs =
-    options.queueTimeoutMsOverride ?? options.config.maxQueueSeconds * 1000;
   const heartbeatIntervalMs =
     options.heartbeatIntervalMsOverride ?? options.config.heartbeatSeconds * 1000;
   const staleAfterMs =
     options.staleAfterMsOverride ?? options.config.staleAfterSeconds * 1000;
   const maxLeaseMs =
     options.maxLeaseMsOverride ?? options.config.maxLeaseSeconds * 1000;
-  const pollIntervalMs = options.pollIntervalMsOverride ?? 250;
   const leaseId = randomUUID();
   const createdAtMs = Date.now();
   const callerScope = options.callerId;
@@ -352,30 +386,51 @@ export async function acquireOmpReadCapacity(
     WHERE kind = ?1 AND scope_key = ?2
   `);
 
-  const acquireCallerSlot = (): number | null => runImmediateTransaction(database, () => {
+  const acquireSlots = (): AllocationResult => runImmediateTransaction(database, () => {
     const nowMs = Date.now();
     deleteExpiredLeases(database, nowMs, staleAfterMs, maxLeaseMs);
     const callerSlot = findFreeSlot(
       selectSlots.all("caller", callerScope),
       options.config.maxPerCallerConcurrent,
     );
-    if (callerSlot !== null) {
-      insertLease.run(
-        "caller",
-        callerScope,
-        callerSlot,
-        leaseId,
-        options.callerId,
-        options.runId,
-        process.pid,
-        createdAtMs,
-      );
+    if (callerSlot === null) {
+      return { status: "caller_busy" };
     }
-    return callerSlot;
+
+    const globalSlot = findFreeSlot(
+      selectSlots.all("global", "repository"),
+      options.config.maxGlobalConcurrent,
+    );
+    if (globalSlot === null) {
+      return { status: "capacity_full" };
+    }
+
+    insertLease.run(
+      "caller",
+      callerScope,
+      callerSlot,
+      leaseId,
+      options.callerId,
+      options.runId,
+      process.pid,
+      createdAtMs,
+    );
+    insertLease.run(
+      "global",
+      "repository",
+      globalSlot,
+      leaseId,
+      options.callerId,
+      options.runId,
+      process.pid,
+      createdAtMs,
+    );
+    return { status: "acquired", callerSlot, globalSlot };
   });
-  let callerSlot: number | null;
+
+  let allocation: AllocationResult;
   try {
-    callerSlot = acquireCallerSlot();
+    allocation = acquireSlots();
   } catch (error) {
     try {
       closeDatabase();
@@ -384,13 +439,22 @@ export async function acquireOmpReadCapacity(
     }
     throw error;
   }
-  if (callerSlot === null) {
+
+  if (allocation.status !== "acquired") {
     closeDatabase();
+    if (allocation.status === "caller_busy") {
+      throw new OmpReadCapacityError(
+        "caller_busy",
+        `调用者 ${options.callerId} 已达到 OMP 并发上限。`,
+      );
+    }
     throw new OmpReadCapacityError(
-      "caller_busy",
-      `调用者 ${options.callerId} 已达到 OMP 并发上限。`,
+      "capacity_full",
+      `OMP 队列已满：当前 ${options.config.maxGlobalConcurrent} 个全局槽位均被占用，请稍后重试。`,
     );
   }
+
+  const { callerSlot, globalSlot } = allocation;
 
   const updateHeartbeat = prepare(`
     UPDATE omp_read_leases
@@ -413,105 +477,51 @@ export async function acquireOmpReadCapacity(
   }, heartbeatIntervalMs);
   heartbeatTimer.unref();
 
-  try {
-    const acquireGlobalSlot = (): number | null => runImmediateTransaction(database, () => {
-      const nowMs = Date.now();
-      deleteExpiredLeases(database, nowMs, staleAfterMs, maxLeaseMs);
-      const globalSlot = findFreeSlot(
-        selectSlots.all("global", "repository"),
-        options.config.maxGlobalConcurrent,
-      );
-      if (globalSlot !== null) {
-        insertLease.run(
-          "global",
-          "repository",
-          globalSlot,
-          leaseId,
-          options.callerId,
-          options.runId,
-          process.pid,
-          createdAtMs,
-        );
+  let released = false;
+  const deleteOwnedLease = prepare(
+    "DELETE FROM omp_read_leases WHERE lease_id = ?1",
+  );
+  const attachChild = prepare(`
+    UPDATE omp_read_leases
+    SET child_pid = ?1, heartbeat_at_ms = ?2
+    WHERE lease_id = ?3
+  `);
+  return {
+    callerId: options.callerId,
+    callerSlot,
+    globalSlot,
+    async attachChildProcess(pid: number): Promise<void> {
+      if (released || !Number.isInteger(pid) || pid <= 0) {
+        return;
       }
-      return globalSlot;
-    });
-
-    const queueDeadline = queueStartedAt + queueTimeoutMs;
-    let globalSlot: number | null = null;
-    while (globalSlot === null) {
-      globalSlot = acquireGlobalSlot();
-      if (globalSlot !== null) {
-        break;
+      attachChild.run(pid, Date.now(), leaseId);
+    },
+    async release(): Promise<void> {
+      if (released) {
+        return;
       }
-      const remainingMs = queueDeadline - Date.now();
-      if (remainingMs <= 0) {
-        throw new OmpReadCapacityError(
-          "capacity_timeout",
-          `等待 OMP 全局容量超过 ${options.config.maxQueueSeconds} 秒。`,
-        );
-      }
-      const jitterMs = Math.floor(Math.random() * Math.max(1, pollIntervalMs / 4));
-      await wait(Math.min(remainingMs, pollIntervalMs + jitterMs));
-    }
-
-    let released = false;
-    const deleteOwnedLease = prepare(
-      "DELETE FROM omp_read_leases WHERE lease_id = ?1",
-    );
-    const attachChild = prepare(`
-      UPDATE omp_read_leases
-      SET child_pid = ?1, heartbeat_at_ms = ?2
-      WHERE lease_id = ?3
-    `);
-    return {
-      callerId: options.callerId,
-      callerSlot,
-      globalSlot,
-      queueDurationMs: Date.now() - queueStartedAt,
-      async attachChildProcess(pid: number): Promise<void> {
-        if (released || !Number.isInteger(pid) || pid <= 0) {
-          return;
-        }
-        attachChild.run(pid, Date.now(), leaseId);
-      },
-      async release(): Promise<void> {
-        if (released) {
-          return;
-        }
-        released = true;
-        clearInterval(heartbeatTimer);
-        let releaseError: unknown;
-        try {
-          for (let attempt = 0; attempt < 3; attempt += 1) {
-            try {
-              runImmediateTransaction(database, () => deleteOwnedLease.run(leaseId));
-              releaseError = undefined;
-              break;
-            } catch (error) {
-              releaseError = error;
-              if (attempt < 2) {
-                await wait(50 * (attempt + 1));
-              }
+      released = true;
+      clearInterval(heartbeatTimer);
+      let releaseError: unknown;
+      try {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            runImmediateTransaction(database, () => deleteOwnedLease.run(leaseId));
+            releaseError = undefined;
+            break;
+          } catch (error) {
+            releaseError = error;
+            if (attempt < 2) {
+              await wait(50 * (attempt + 1));
             }
           }
-        } finally {
-          closeDatabase();
         }
-        if (releaseError) {
-          throw releaseError;
-        }
-      },
-    };
-  } catch (error) {
-    clearInterval(heartbeatTimer);
-    const cleanupOwnedLease = prepare(
-      "DELETE FROM omp_read_leases WHERE lease_id = ?1",
-    );
-    try {
-      runImmediateTransaction(database, () => cleanupOwnedLease.run(leaseId));
-    } finally {
-      closeDatabase();
-    }
-    throw error;
-  }
+      } finally {
+        closeDatabase();
+      }
+      if (releaseError) {
+        throw releaseError;
+      }
+    },
+  };
 }

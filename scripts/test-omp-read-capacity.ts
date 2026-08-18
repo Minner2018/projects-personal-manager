@@ -20,9 +20,10 @@ const projectRoot = path.resolve(scriptDirectory, "..");
 const runtimeRootsToCleanup: string[] = [];
 
 const baseConfig: OmpReadCapacityConfig = {
+  model: "test/read-model",
+  thinking: "medium",
   maxGlobalConcurrent: 3,
   maxPerCallerConcurrent: 1,
-  maxQueueSeconds: 2,
   heartbeatSeconds: 1,
   staleAfterSeconds: 2,
   maxLeaseSeconds: 10,
@@ -65,10 +66,8 @@ async function acquire(
   runId: string,
   config: OmpReadCapacityConfig = baseConfig,
   overrides: {
-    queueTimeoutMsOverride?: number;
     staleAfterMsOverride?: number;
     maxLeaseMsOverride?: number;
-    pollIntervalMsOverride?: number;
   } = {},
 ): Promise<OmpReadCapacityLease> {
   return await acquireOmpReadCapacity({
@@ -78,19 +77,18 @@ async function acquire(
     config,
     runtimeRoot,
     heartbeatIntervalMsOverride: 20,
-    queueTimeoutMsOverride: overrides.queueTimeoutMsOverride,
     staleAfterMsOverride: overrides.staleAfterMsOverride,
     maxLeaseMsOverride: overrides.maxLeaseMsOverride,
-    pollIntervalMsOverride: overrides.pollIntervalMsOverride ?? 10,
   });
 }
 
 async function testRepositoryConfig(): Promise<void> {
   const config = await loadOmpReadCapacityConfig(projectRoot);
+  assert.equal(config.model, "litellm/deepseek-v4-flash-private");
+  assert.equal(config.thinking, "off");
   assert.equal(config.maxGlobalConcurrent, 3);
   assert.equal(config.maxPerCallerConcurrent, 1);
-  assert.equal(config.maxQueueSeconds, 600);
-  assert.equal(config.maxLeaseSeconds, 7200);
+  assert.equal(config.maxLeaseSeconds, 4500);
 }
 
 async function testCallerLimit(): Promise<void> {
@@ -105,27 +103,23 @@ async function testCallerLimit(): Promise<void> {
   });
 }
 
-async function testGlobalQueue(): Promise<void> {
+async function testGlobalCapacityFull(): Promise<void> {
   await withRuntime(async (runtimeRoot) => {
     const leases = await Promise.all([
       acquire(runtimeRoot, "caller-a", "run-a"),
       acquire(runtimeRoot, "caller-b", "run-b"),
       acquire(runtimeRoot, "caller-c", "run-c"),
     ]);
-    let fourthResolved = false;
-    const fourthPromise = acquire(runtimeRoot, "caller-d", "run-d").then((lease) => {
-      fourthResolved = true;
-      return lease;
-    });
+    await assert.rejects(
+      acquire(runtimeRoot, "caller-d", "run-d"),
+      (error: unknown) =>
+        error instanceof OmpReadCapacityError &&
+        error.code === "capacity_full" &&
+        /队列已满/.test(error.message),
+    );
 
-    await wait(60);
-    assert.equal(fourthResolved, false);
-    await leases[1].release();
-    const fourth = await fourthPromise;
-    assert.ok(fourth.queueDurationMs >= 50);
-
-    await fourth.release();
     await leases[0].release();
+    await leases[1].release();
     await leases[2].release();
   });
 }
@@ -145,20 +139,18 @@ async function testFuturePerCallerLimit(): Promise<void> {
   });
 }
 
-async function testQueueTimeoutReleasesCaller(): Promise<void> {
+async function testCapacityFullDoesNotOccupyCaller(): Promise<void> {
   await withRuntime(async (runtimeRoot) => {
     const config = { ...baseConfig, maxGlobalConcurrent: 1 };
     const first = await acquire(runtimeRoot, "caller-a", "run-a", config);
     await assert.rejects(
-      acquire(runtimeRoot, "caller-b", "run-b1", config, {
-        queueTimeoutMsOverride: 80,
-      }),
+      acquire(runtimeRoot, "caller-b", "run-b1", config),
       (error: unknown) =>
-        error instanceof OmpReadCapacityError && error.code === "capacity_timeout",
+        error instanceof OmpReadCapacityError && error.code === "capacity_full",
     );
     await first.release();
 
-    // 如果排队失败正确释放了调用者槽，同一 caller 应能立即再次申请。
+    // 容量已满时不能留下临时 caller 租约，同一 caller 之后应能立即申请。
     const retried = await acquire(runtimeRoot, "caller-b", "run-b2", config);
     await retried.release();
   });
@@ -224,11 +216,10 @@ async function testLiveChildProtectsOrphanLease(): Promise<void> {
 
     await assert.rejects(
       acquire(runtimeRoot, "caller-new", "run-new", config, {
-        queueTimeoutMsOverride: 50,
         staleAfterMsOverride: 20,
       }),
       (error: unknown) =>
-        error instanceof OmpReadCapacityError && error.code === "capacity_timeout",
+        error instanceof OmpReadCapacityError && error.code === "capacity_full",
     );
   });
 }
@@ -304,11 +295,10 @@ async function testHeartbeatProtectsActiveLease(): Promise<void> {
     await wait(120);
     await assert.rejects(
       acquire(runtimeRoot, "caller-waiting", "run-waiting", config, {
-        queueTimeoutMsOverride: 50,
         staleAfterMsOverride: 40,
       }),
       (error: unknown) =>
-        error instanceof OmpReadCapacityError && error.code === "capacity_timeout",
+        error instanceof OmpReadCapacityError && error.code === "capacity_full",
     );
     await active.release();
   });
@@ -316,25 +306,33 @@ async function testHeartbeatProtectsActiveLease(): Promise<void> {
 
 async function testGlobalStressLimit(): Promise<void> {
   await withRuntime(async (runtimeRoot) => {
-    let active = 0;
-    let maximumActive = 0;
-    await Promise.all(
+    const attempts = await Promise.allSettled(
       Array.from({ length: 10 }, (_, index) =>
-        (async () => {
-          const lease = await acquire(
-            runtimeRoot,
-            `stress-caller-${index}`,
-            `stress-run-${index}`,
-          );
-          active += 1;
-          maximumActive = Math.max(maximumActive, active);
-          await wait(30);
-          active -= 1;
-          await lease.release();
-        })(),
+        acquire(
+          runtimeRoot,
+          `stress-caller-${index}`,
+          `stress-run-${index}`,
+        ),
       ),
     );
-    assert.equal(maximumActive, 3);
+    const acquired = attempts
+      .filter((result): result is PromiseFulfilledResult<OmpReadCapacityLease> =>
+        result.status === "fulfilled",
+      )
+      .map((result) => result.value);
+    const rejected = attempts.filter(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    assert.equal(acquired.length, 3);
+    assert.equal(rejected.length, 7);
+    assert.ok(
+      rejected.every(
+        (result) =>
+          result.reason instanceof OmpReadCapacityError &&
+          result.reason.code === "capacity_full",
+      ),
+    );
+    await Promise.all(acquired.map((lease) => lease.release()));
   });
 }
 
@@ -381,7 +379,7 @@ async function testCrossProcessGlobalLimit(): Promise<void> {
       WHERE kind = 'global'
     `);
     let exitedWorkers = 0;
-    const workers = Array.from({ length: 6 }, (_, index) => {
+    const workers = Array.from({ length: 3 }, (_, index) => {
       const payload: CapacityWorkerPayload = {
         runtimeRoot,
         callerId: `process-caller-${index}`,
@@ -445,9 +443,9 @@ async function main(): Promise<void> {
   const tests: Array<[string, () => Promise<void>]> = [
     ["仓库并发配置", testRepositoryConfig],
     ["单调用者并发上限", testCallerLimit],
-    ["全局容量排队", testGlobalQueue],
+    ["全局容量满时立即失败", testGlobalCapacityFull],
     ["未来单调用者多槽", testFuturePerCallerLimit],
-    ["排队超时释放调用者槽", testQueueTimeoutReleasesCaller],
+    ["容量满不占用调用者槽", testCapacityFullDoesNotOccupyCaller],
     ["陈旧租约回收", testStaleLeaseRecovery],
     ["孤儿子进程保留租约", testLiveChildProtectsOrphanLease],
     ["最长租约避免 PID 复用泄漏", testMaximumLeaseAgePreventsPidReuseLeak],

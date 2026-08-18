@@ -1,8 +1,9 @@
 {
+  "model": "litellm/deepseek-v4-flash-private",
+  "thinking": "off",
   "maxGlobalConcurrent": 3,
   "maxPerCallerConcurrent": 1,
-  "maxQueueSeconds": 600,
   "heartbeatSeconds": 10,
   "staleAfterSeconds": 30,
-  "maxLeaseSeconds": 7200
+  "maxLeaseSeconds": 4500
 }
