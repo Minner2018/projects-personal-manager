@@ -10,6 +10,9 @@
 # OMP 文本阅读能力的本地并发租约
 /.omp/runtime/
 
+# 本地测试与预览临时产物
+/.tmp/
+
 # 依赖目录
 /node_modules/
 
