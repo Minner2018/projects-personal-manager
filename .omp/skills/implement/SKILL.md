@@ -3,16 +3,16 @@ name: implement
 description: "route tokens: [I]"
 ---
 
-# Purpose
+# 目的
 
-Implement a clearly scoped code change. Keep the change minimal, follow existing project patterns, and avoid unrelated refactors unless they are required to complete the request.
+实现边界清晰的代码变更。保持变更最小，遵循项目现有模式；除非完成请求确实需要，否则避免无关重构。
 
-# Workflow
+# 工作流程
 
-1. Define the success criteria and confirm the implementation scope.
-2. Read only the necessary context, including relevant source, tests, configuration, and existing patterns.
-3. When creating or modifying manually authored source code, read [the unified source-code standard](../../references/source-code-standard.md) completely before editing and apply its `[I]` formatting and commenting requirements to every source file changed by the task. Do not load it for documentation-only, configuration-only, dependency-metadata-only, or generated-code changes.
-4. Make the smallest coherent implementation that satisfies the scope and preserves the required formatting and comment-led layered understandability.
-5. Review all changed source against the unified reference checklist, correct formatting and missing or low-value comments, and ensure comments remain consistent with the final code.
-6. Run relevant verification, such as tests, type checks, linting, or targeted manual checks.
-7. Report the result, verification performed, unified source-standard review, and any remaining risk.
+1. 定义成功标准并确认实现范围。
+2. 只读取必要上下文，包括相关源码、测试、配置和现有模式。
+3. 创建或修改人工源码时，在编辑前完整读取[统一源码规范](../../references/source-code-standard.md)，并将其 `[I]` 格式和注释要求应用到本任务修改的每个源码文件。纯文档、纯配置、纯依赖元数据或纯生成代码变更不加载该规范。
+4. 完成满足范围的最小完整实现，同时保持要求的格式和以注释为主导的分层可理解性。
+5. 根据统一规范的检查清单审核全部变更源码，修正格式、缺失注释和低价值注释，并确保注释与最终代码一致。
+6. 运行相关验证，例如测试、类型检查、代码检查或针对性人工检查。
+7. 报告实现结果、已执行的验证、统一源码规范审核情况和剩余风险。

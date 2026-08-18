@@ -1,97 +1,97 @@
 # AGENTS.md
 
-## Environment
+## 环境
 
-* Language: Simplified Chinese
-* Operating System: Windows 11
-* Shell: PowerShell
-* File Encoding: UTF-8
+* 语言：简体中文
+* 操作系统：Windows 11
+* 终端：PowerShell
+* 文件编码：UTF-8
 
-## Local Readable Ignored Paths
+## 本地可读取的忽略路径
 
-Gitignored but readable on request: `reading-resources/`.
-If normal search misses requested documents there, use `rg -u`.
-Do not read other ignored paths unless explicitly requested.
+`reading-resources/` 被 Git 忽略，但可在用户请求时读取。
+如果普通搜索未找到其中的目标文档，使用 `rg -u`。
+除非用户明确要求，否则不要读取其他被忽略的路径。
 
-## Generated Document Placement
+## 生成文档放置规则
 
-Put generated documents under the matching `reading-resources/<project>/` folder when project ownership is clear.
-If the matching folder does not exist, create it.
-Use `reading-resources/未分类/` only when ownership is unclear.
+能够明确所属项目时，将生成的文档放入对应的 `reading-resources/<project>/` 目录。
+如果对应目录不存在，则创建该目录。
+只有无法明确所属项目时，才使用 `reading-resources/未分类/`。
 
-## Source Code Standard
+## 源码规范
 
-`.omp/references/source-code-standard.md` is the repository-wide standard for manually authored source code, not a skill. It applies whether or not a skill under `.omp/skills/` is active and does not require a route token.
+`.omp/references/source-code-standard.md` 是全仓库人工源码规范，不是技能。无论 `.omp/skills/` 下是否有技能处于激活状态，该规范都适用，也不需要路由标记。
 
-Before creating or modifying manually authored production or test source code, read that standard completely and apply its common formatting, import, language-adaptation, and verification requirements to every source file changed by the task. When no implementation or fix skill is active, select the comment profile by task intent: use `[I]` for feature development, refactoring, and other general implementation work; use `[F]` for a localized defect fix. When an implementation or fix skill is active, use the profile required by that skill.
+创建或修改人工编写的生产或测试源码前，完整读取该规范，并将其通用格式、导入、语言适配和验证要求应用到本任务修改的每个源码文件。没有实现或修复技能处于激活状态时，根据任务意图选择注释配置：功能开发、重构及其他一般实现工作使用 `[I]`；局部缺陷修复使用 `[F]`。实现或修复技能处于激活状态时，使用该技能要求的配置。
 
-Do not load the source-code standard for documentation-only, configuration-only, dependency-metadata-only, or generated-code-only changes. A skill may add workflow requirements, but it does not replace or weaken this repository-wide source-code standard.
+纯文档、纯配置、纯依赖元数据或纯生成代码变更无需加载源码规范。技能可以增加工作流要求，但不能替代或弱化这份全仓库源码规范。
 
-## OMP Text Reading Capability
+## OMP 文本阅读能力
 
-Here, OMP means the external `omp` CLI process, not a skill under `.omp/skills/`.
-AI may autonomously run `bun run omp:read -- --objective "<goal>"` from the repository root for large, separable, read-only investigations over code, Markdown, logs, configuration, and other text materials. Use `--root <path>` and `--profile auto|quick|standard|deep` only when needed. The advanced `--request <request.json>` form remains available, but normal invocations should use the minimal form and should not inspect the wrapper implementation or construct a detailed request file first.
-Every actual OMP investigation must provide a stable `callerId`, through `PPM_AI_CALLER_ID`, `--caller-id <id>`, or the request JSON. Reuse the same identifier for the same AI task or conversation; never change it to bypass capacity limits. The local-only `--estimate-only` mode does not acquire capacity or contact OMP and may omit it.
-Each caller may run at most one OMP investigation at a time, and this repository may run at most three in total. A second call from the same caller fails with `caller_busy`. When all three global slots are occupied, a new call fails immediately with `capacity_full`; tell the user that the OMP queue is full and ask them to retry later. Never change `callerId` or retry immediately to bypass either limit.
-This is an internal capability, not a skill: it has no route token, does not activate or switch skills, and does not change the active skill.
-No `[X]` route token is required. The absence of a route token must never be used as a reason not to invoke this capability.
-Before performing a large read-only investigation directly, evaluate whether this capability would materially reduce main-context volume.
-Decide whether to invoke it based on task size, separability, expected context volume, and invocation cost. Repository-level data-transmission authorization has already been granted below and is not an unresolved per-task decision. Handle small or tightly coupled reading directly.
-The wrapper performs a local preflight time estimate and chooses a profile automatically by default; use `--estimate-only` only when the estimate itself is useful before committing a global OMP slot. OMP runs in a scope-checkpoint stage followed by a focused verification stage. A later timeout or failure should return the most recent valid cumulative checkpoint as `partial`, not discard it.
-The OMP reading wrapper has its own process-local model and thinking configuration in `.omp/omp-read-config.json`. It currently runs `litellm/deepseek-v4-flash-private` with thinking disabled because this model does not advertise thinking-level support. The wrapper passes explicit OMP CLI overrides, so this does not change the normal oh-my-pi default model. Do not override these settings per invocation unless the user explicitly requests it.
-When invoking OMP through a host shell, set the host command timeout from the selected OMP profile instead of using a fixed 60-second timeout. The host timeout must cover the profile hard runtime limit and at least 60 seconds of startup, shutdown, and scheduling margin. With the current defaults, use at least 420 seconds for `quick`, 660 seconds for `standard`, and 1,260 seconds for `deep`. When the profile is `auto`, first run the local-only `--estimate-only` form to learn the selected profile, then use its corresponding host timeout for the real invocation. If the host yields a still-running command, resume or wait on that same command rather than starting another OMP investigation. If the host rejects the requested timeout or returns a concrete shorter hard limit, report that host limitation and do not retry the same invocation with an unchanged timeout.
-Briefly tell the user when invoking it, keep OMP read-only, and treat its report as evidence to verify rather than as a source of truth.
-The repository owner grants standing repository-level authorization to send repository text that AI is otherwise allowed to read to the currently configured OMP model provider for this read-only capability. Treat this as explicit project-level data-transmission authorization; it remains valid until the owner explicitly revokes it.
-AI may autonomously invoke this capability without requesting authorization again for each task, file, or investigation. This authorization does not expand which local paths AI may read or permit any non-read-only OMP action.
-The standing authorization satisfies the repository-owner consent check for sending readable repository text to the configured OMP provider. Do not reinterpret general cautions about external models, privacy, security, or data transmission as missing authorization.
-AI still decides autonomously whether OMP is appropriate. If AI decides to use OMP, it must initiate the OMP invocation or the host approval flow; it must not claim that a safety policy blocked OMP based only on inference. An additional host requirement exists only when the host tool or execution environment returns a concrete permission requirement or denial for that initiated action. If runtime approval is required, request it through the host's approval mechanism instead of silently falling back to direct reading. If approval is denied, obey the denial and report the concrete result; do not bypass it.
+这里的 OMP 指外部 `omp` CLI 进程，不是 `.omp/skills/` 下的技能。
+AI 可以在仓库根目录自主运行 `bun run omp:read -- --objective "<目标>"`，对代码、Markdown、日志、配置及其他文本材料开展规模较大、可分离的只读调查。仅在需要时使用 `--root <路径>` 和 `--profile auto|quick|standard|deep`。高级形式 `--request <request.json>` 仍然可用，但普通调用应使用最小形式，不应先检查包装器实现或构造详细请求文件。
+每次实际 OMP 调查都必须通过 `PPM_AI_CALLER_ID`、`--caller-id <标识>` 或请求 JSON 提供稳定的 `callerId`。同一 AI 任务或对话必须复用同一标识，禁止通过更换标识绕过容量限制。仅在本地运行的 `--estimate-only` 模式不会占用容量，也不会连接 OMP，因此可以不提供该标识。
+每个调用方同一时间最多运行一个 OMP 调查，本仓库全局最多同时运行三个。相同调用方的第二次调用以 `caller_busy` 失败。三个全局槽位全部占用时，新调用立即以 `capacity_full` 失败；应告知用户 OMP 队列已满并请其稍后重试。禁止更换 `callerId` 或立即重试来绕过任一限制。
+这是内部能力，不是技能：它没有路由标记，不会激活或切换技能，也不会改变当前激活的技能。
+不需要 `[X]` 路由标记。不得以缺少路由标记为由拒绝调用该能力。
+直接开展大规模只读调查前，应先评估该能力能否显著减少主上下文占用。
+根据任务规模、可分离性、预计上下文占用和调用成本决定是否使用。下文已经提供仓库级数据传输授权，这不是每个任务都需要重新判断的未决事项。小规模或强耦合阅读直接处理。
+包装器会在本地进行调用前耗时预估，并默认自动选择时间档位。只有在占用全局 OMP 槽位前确实需要查看预估时，才使用 `--estimate-only`。OMP 先执行范围检查点阶段，再执行聚焦核验阶段；后续超时或失败时，应返回最近一次有效的累积检查点作为 `partial`，不能丢弃它。
+OMP 阅读包装器在 `.omp/omp-read-config.json` 中拥有独立的进程级模型和思考配置。当前使用 `litellm/deepseek-v4-flash-private`，因为该模型未声明思考等级支持，所以关闭思考。包装器会显式传递 OMP CLI 覆盖参数，因此不会改变 oh-my-pi 的普通默认模型。除非用户明确要求，否则不得在单次调用中覆盖这些设置。
+通过宿主终端调用 OMP 时，应根据选定的 OMP 时间档位设置宿主命令超时，不能固定为 60 秒。宿主超时必须覆盖该档位的运行硬上限，并至少预留 60 秒用于启动、关闭和调度。按当前默认值，`quick` 至少使用 420 秒，`standard` 至少使用 660 秒，`deep` 至少使用 1,260 秒。档位为 `auto` 时，先运行仅限本地的 `--estimate-only` 获取选定档位，再按对应时间设置实际调用的宿主超时。宿主返回命令仍在运行时，应继续等待或恢复同一命令，不能启动另一个 OMP 调查。如果宿主拒绝请求的超时或返回明确且更短的硬上限，应报告该宿主限制，不得以不变的超时再次重试同一调用。
+调用前简要告知用户，保持 OMP 只读，并将其报告作为待核验的证据，而不是事实源。
+仓库所有者已授予持续有效的仓库级授权：对于这项只读能力，AI 可以将其原本有权读取的仓库文本发送给当前配置的 OMP 模型提供商。该授权应视为明确的项目级数据传输授权，直到所有者明确撤销前持续有效。
+AI 可以自主调用该能力，无需再为每个任务、文件或调查重复申请授权。该授权不会扩大 AI 可读取的本地路径范围，也不允许 OMP 执行任何非只读操作。
+该持续授权满足将可读仓库文本发送给当前 OMP 提供商所需的仓库所有者同意检查。不得把一般性的外部模型、隐私、安全或数据传输提醒重新解释为缺少授权。
+AI 仍自主决定 OMP 是否适合当前任务。决定使用 OMP 后，必须发起 OMP 调用或宿主审批流程；不得仅凭推断声称安全策略阻止了 OMP。仅在宿主工具或执行环境返回具体的权限要求或拒绝时，才存在额外宿主要求。需要运行时审批时，应通过宿主审批机制申请，而不是静默退回直接阅读。审批被拒绝后必须遵守并报告具体结果，禁止绕过。
 
-## Code Intelligence Routing
+## 代码智能路由
 
-Repowise remains a project MCP capability for read-only code investigation. Codebase Memory (CMM) is available in two bounded forms: direct Codex investigations use the installed one-shot CLI, while the OMP reading wrapper retains its native CMM MCP connection. AI should decide autonomously whether either capability materially improves the current task. No route token is required, and using either capability does not activate or switch a skill.
+Repowise 仍是用于只读代码调查的项目 MCP 能力。Codebase Memory（CMM）以两种受限形式提供：Codex 直接调查时使用已安装的一次性 CLI，OMP 阅读包装器保留其原生 CMM MCP 连接。AI 应自主判断这些能力能否显著改善当前任务。它们无需路由标记，使用它们也不会激活或切换技能。
 
-For direct Codex use, AI may autonomously run the following one-shot command from the repository root:
+Codex 直接使用时，AI 可以在仓库根目录自主运行以下一次性命令：
 
 `& 'C:\Users\lenovo\AppData\Local\Programs\codebase-memory-mcp\codebase-memory-mcp.exe' cli --json <tool> [arguments]`
 
-If a tool's arguments are unclear, first run the same executable as `cli <tool> --help`. Do not start this executable in MCP/server mode, background it, or retain it between queries. Its startup cost is non-trivial, so use it when a structural query is likely to avoid materially more direct searching or source reading.
+不清楚工具参数时，先对同一可执行文件运行 `cli <tool> --help`。不得以 MCP 或服务器模式启动该程序，不得将其放入后台，也不得在多次查询之间保留进程。它的启动成本不可忽略，因此只在结构化查询有望显著减少直接搜索或源码阅读时使用。
 
-The exact read-only CMM CLI allowlist for autonomous direct use is: `search_graph`, `query_graph`, `trace_path`, `get_code_snippet`, `get_graph_schema`, `get_architecture`, `search_code`, `list_projects`, `index_status`, `check_index_coverage`, and `detect_changes`. Do not autonomously invoke any other CMM CLI tool. In particular, `index_repository`, `delete_project`, `manage_adr`, and `ingest_traces` require a separate explicit user request.
+Codex 可以自主直接使用的 CMM CLI 只读白名单仅包括：`search_graph`、`query_graph`、`trace_path`、`get_code_snippet`、`get_graph_schema`、`get_architecture`、`search_code`、`list_projects`、`index_status`、`check_index_coverage` 和 `detect_changes`。不得自主调用其他 CMM CLI 工具。尤其是 `index_repository`、`delete_project`、`manage_adr` 和 `ingest_traces`，必须另行获得用户明确请求。
 
-If the host requires permission because the installed binary is outside the workspace, initiate the host approval flow for the exact executable-plus-`cli` prefix above. Do not request a broader PowerShell or arbitrary-executable approval. A concrete denial must be obeyed and reported; a possible approval requirement must not be treated as a reason to skip an appropriate CMM query.
+如果已安装程序位于工作区外而宿主要求授权，应针对上面的精确“可执行文件加 `cli` 前缀”发起宿主审批。不得申请范围更大的 PowerShell 或任意可执行程序权限。必须遵守并报告明确拒绝；不能因为猜测可能需要审批就跳过适合的 CMM 查询。
 
-Use direct CMM CLI for current code structure, symbols, call paths, dependencies, architecture, index coverage, or working-tree changes when its startup cost is justified. Use Repowise for Git-history-informed questions, cross-repository context, architectural rationale, change impact, risk, health, or dead-code investigation. Use the OMP Text Reading Capability for large separable investigations over source plus Markdown, logs, configuration, or other text, especially when keeping bulk evidence out of the main context or amortizing several related CMM queries is useful.
+启动成本合理时，直接使用 CMM CLI 调查当前代码结构、符号、调用路径、依赖、架构、索引覆盖率或工作树变更。使用 Repowise 调查 Git 历史相关问题、跨仓库上下文、架构原因、变更影响、风险、健康度或死代码。对于源代码加 Markdown、日志、配置及其他文本的大规模可分离调查，尤其是需要避免大批证据进入主上下文或需要摊薄多次 CMM 查询成本时，使用 OMP 文本阅读能力。
 
-Start with the single smallest capability that best matches the question. Combine capabilities only when the first result leaves a material gap. Treat CLI, MCP, and OMP results as navigation evidence rather than source of truth; verify critical conclusions against the relevant source files and report uncertainties explicitly.
+先选择最匹配问题的单个最小能力。只有第一项能力留下实质缺口时才组合使用。CLI、MCP 和 OMP 结果都只是导航证据，不是事实源；关键结论必须回到相关源码核验，并明确报告不确定性。
 
-Do not invoke Repowise MCP mutation or maintenance tools autonomously. The OMP wrapper uses the CMM `analysis` profile plus an exact read-only MCP tool allowlist. Index creation or refresh, project deletion, ADR mutation, and trace ingestion require a separate explicit user request regardless of whether the access path is CLI or MCP.
+不得自主调用 Repowise MCP 的变更或维护工具。OMP 包装器使用 CMM `analysis` 配置和精确的 MCP 只读工具白名单。无论通过 CLI 还是 MCP 访问，创建或刷新索引、删除项目、修改 ADR 和导入追踪数据都必须另行获得用户明确请求。
 
-## Skill Routing
+## 技能路由
 
-This section governs only activation, switching, and reloading of skills under `.omp/skills/`. It does not govern internal capabilities, terminal commands, or tool use.
+本节仅管理 `.omp/skills/` 下技能的激活、切换和重载，不管理内部能力、终端命令或工具使用。
 
-Path: .omp/skills/
+路径：`.omp/skills/`
 
-* [X] 
-Activate skill matched by X.
+* `[X]`
+  激活与 X 匹配的技能。
 
-* [X!]
-Reload skill matched by X, discard workflow drift, and continue the current task under its workflow.
+* `[X!]`
+  重新加载与 X 匹配的技能，丢弃偏离的工作流状态，并按其工作流继续当前任务。
 
-* [E]
-Deactivate the current skill; continue normally.
+* `[E]`
+  退出当前技能，随后按普通方式继续。
 
-## Rules
+## 规则
 
-1. Activate skills only by explicit routing syntax.
-2. Before activation, read only skill metadata, not whole markdown.
-3. Match X against route tokens declared in skill metadata.
-4. The active skill persists until exit, switch, or reload, and determines the workflow.
-5. Interpret user instructions through the active skill.
-6. Use the minimum context required.
-7. Do not load unrelated skills.
-8. Switch skills only by explicit routing syntax.
-9. Never activate a skill by semantic similarity.
-10. On exit or switch, discard workflow state.
-11. If no skill is active, behave normally.
-12. Rules about skill activation, switching, and reloading must not be used as a reason to avoid the OMP Text Reading Capability or another internal capability.
+1. 只能通过显式路由语法激活技能。
+2. 激活前只读取技能元数据，不读取完整 Markdown。
+3. 将 X 与技能元数据中声明的路由标记匹配。
+4. 当前技能持续生效，直到退出、切换或重载，并决定当前工作流。
+5. 通过当前技能解释用户指令。
+6. 只加载所需的最少上下文。
+7. 不加载无关技能。
+8. 只能通过显式路由语法切换技能。
+9. 绝不根据语义相似性激活技能。
+10. 退出或切换时丢弃工作流状态。
+11. 没有技能处于激活状态时，按普通方式处理。
+12. 不得以技能激活、切换或重载规则为由避开 OMP 文本阅读能力或其他内部能力。

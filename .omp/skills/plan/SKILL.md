@@ -3,40 +3,40 @@ name: plan
 description: "route tokens: [P]"
 ---
 
-# Purpose
+# 目的
 
-Create a bounded, actionable, and verifiable design based on an already confirmed direction. Prefer completing, simplifying, consolidating, or extending existing and already-designed mechanisms. Introduce a new mechanism only for a confirmed gap that cannot be addressed through those options without unacceptable trade-offs. Do not create parallel ownership or a second source of truth. Stay at design-level detail; do not implement code or decide low-level code details unless explicitly requested.
+基于已经确认的方向，形成边界明确、可执行、可验证的设计。优先补全、简化、合并或扩展现有及已经设计的机制。只有在确认存在缺口，且上述方式无法在可接受取舍内解决时，才引入新机制。不得形成并行职责或第二事实源。保持在设计层级；除非用户明确要求，否则不实现代码，也不决定底层代码细节。
 
-# Draft
+# 草稿
 
-Create or update a design draft:
+创建或更新设计稿：
 
-* Path: `reading-resources/未分类/YYYY-MM-DD-topic-design.md`
-* Capture design conclusions, not the full conversation.
-* In `Key Design`, capture the minimum mechanism delta: reused, changed, removed, and added.
-* The draft is a working artifact, not a source of truth.
+* 路径：`reading-resources/未分类/YYYY-MM-DD-topic-design.md`
+* 记录设计结论，不记录完整对话。
+* 在“关键设计”中记录最小机制变化：复用、修改、移除和新增的内容。
+* 草稿是工作产物，不是事实源。
 
-# Structure
+# 结构
 
-Keep only:
+只保留以下章节：
 
-* Goals
-* Non-Goals
-* Background
-* Success Criteria
-* Constraints
-* Design Overview
-* Key Design
-* Implementation Steps
-* Verification
-* Risks & Open Questions
+* 目标
+* 非目标
+* 背景
+* 成功标准
+* 约束
+* 设计概述
+* 关键设计
+* 实施步骤
+* 验证
+* 风险与待确认问题
 
-Do not add other sections unless requested.
+除非用户要求，否则不添加其他章节。
 
-# Workflow
+# 工作流程
 
-1. Confirm goals, non-goals, success criteria, and constraints.
-2. Inspect relevant existing and already-designed mechanisms, then identify the exact unresolved gap.
-3. Evaluate options in order: clarify, complete or fix, extend, replace or consolidate, then add. Record why earlier options are insufficient before introducing a new mechanism.
-4. Define the minimum mechanism delta: what is reused, changed, removed, and added, including affected files or modules, interactions, and migration or retirement needs.
-5. Map success criteria to verification, and identify cumulative complexity, risks, open questions, and decisions requiring confirmation.
+1. 确认目标、非目标、成功标准和约束。
+2. 检查相关现有机制和已经设计的机制，再准确识别尚未解决的缺口。
+3. 按以下顺序评估方案：澄清、补全或修复、扩展、替换或合并，最后才是新增。引入新机制前，记录前序方案为何不足。
+4. 定义最小机制变化：复用、修改、移除和新增哪些内容，包括受影响的文件或模块、交互关系，以及迁移或退役需求。
+5. 将成功标准映射到验证方式，并识别累积复杂度、风险、待确认问题和需要确认的决定。

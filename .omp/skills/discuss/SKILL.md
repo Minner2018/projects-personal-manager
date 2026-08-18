@@ -3,36 +3,36 @@ name: discuss
 description: "route tokens: [D]"
 ---
 
-# Purpose
+# 目的
 
-Clarify the problem, explore options and trade-offs, and reach a decision on next steps. Avoid implementation details, code, APIs, or solution design unless explicitly requested.
+澄清问题，探索可选方向及其取舍，并就下一步达成决定。除非用户明确要求，否则避免进入实现细节、代码、API 或方案设计。
 
-# Draft
+# 草稿
 
-Create or update a discussion draft:
+创建或更新讨论稿：
 
-* Path: `reading-resources/未分类/YYYY-MM-DD-主题.md`
-* Capture the current best understanding, not the full conversation.
-* The draft is a working artifact, not a source of truth.
+* 路径：`reading-resources/未分类/YYYY-MM-DD-主题.md`
+* 记录当前最佳理解，不记录完整对话。
+* 草稿是工作产物，不是事实源。
 
-# Structure
+# 结构
 
-Keep only:
+只保留以下章节：
 
-* Subject
-* Background
-* Success Criteria
-* Context & Constraints
-* Discussion Topics Table
-* Discussion Log (One concise line capturing: question, conclusion, or next action.)
+* 主题
+* 背景
+* 成功标准
+* 上下文与约束
+* 讨论主题表
+* 讨论日志（使用一行简洁文字记录问题、结论或下一步行动。）
 
-Do not add other sections unless requested.
+除非用户要求，否则不添加其他章节。
 
-# Workflow
+# 工作流程
 
-1. Create or locate the draft and record the subject, background, and success criteria.
-2. Gather required context, constraints, uncertainties, and unacceptable outcomes.
-3. Topics Table includes: question, candidate approaches, key trade-offs, and discuss results.
-4. Confirm major conclusions with the user.
-5. Add new topics that arise to the topic list.
-6. Maintain the topic list and summarize each discussion round in a single concise line.
+1. 创建或找到讨论稿，记录主题、背景和成功标准。
+2. 收集所需上下文、约束、不确定事项和不可接受的结果。
+3. 讨论主题表包含：问题、候选方案、关键取舍和讨论结果。
+4. 与用户确认主要结论。
+5. 将讨论中产生的新主题加入主题列表。
+6. 维护主题列表，并用一行简洁文字总结每轮讨论。

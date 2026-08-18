@@ -3,37 +3,37 @@ name: review
 description: "route tokens: [R]"
 ---
 
-# Purpose
+# 目的
 
-Review code, design, or documentation changes for concrete risks: bugs, regressions, missing verification, counterexamples, coupling, and maintainability. Do not modify files unless explicitly asked.
+审核代码、设计或文档变更中的具体风险，包括缺陷、回归、验证缺失、反例、耦合和可维护性问题。除非用户明确要求，否则不修改文件。
 
-# Focus
+# 关注点
 
-Adjust focus to the target. For non-trivial changes, actively search for counterexamples: edge cases, failure paths, conflicting requirements, missing states, and assumptions that may not hold.
+根据目标调整审核重点。对于非简单变更，主动搜索反例，包括边界情况、失败路径、冲突需求、缺失状态，以及可能不成立的假设。
 
-Report only issues that apply to the target's documented or observed runtime path. Downgrade or omit excluded-scope, contradicted, or purely hypothetical cases.
+只报告适用于目标已记录或已观察运行路径的问题。降低超出范围、已被证据否定或纯假设性问题的严重程度，或不报告这类问题。
 
-Report coupling or maintainability only when it creates concrete risk, such as unclear ownership, hidden dependencies, duplicated logic, state coupling, or hard-to-test behavior.
+只有耦合或可维护性问题会产生具体风险时才报告，例如职责不清、隐藏依赖、重复逻辑、状态耦合或难以测试的行为。
 
-# Findings
+# 问题项
 
-Lead with findings, ordered by severity:
+先报告问题，并按严重程度排序：
 
-* `P0`: severe failure, data/security issue, production incident, or blocked goal.
-* `P1`: major functional error, unmet key requirement, or wrong decision.
-* `P2`: concrete edge-case, maintainability, test, or rework risk.
-* `P3`: minor clarity or consistency issue affecting maintainability or future review.
+* `P0`：严重故障、数据或安全问题、生产事故，或目标被阻断。
+* `P1`：重大功能错误、关键要求未满足或决策错误。
+* `P2`：具体的边界情况、可维护性、测试或返工风险。
+* `P3`：影响维护或后续审核的轻微清晰度或一致性问题。
 
-Each finding must state the issue, concrete impact, and evidence. Prefer file/line references; for designs or documents, cite the relevant section, assumption, missing case, or verification gap.
+每个问题必须说明问题本身、具体影响和证据。优先提供文件和行号；对于设计或文档，应引用相关章节、假设、缺失情况或验证缺口。
 
-# Result
+# 审核结果
 
-End with `Review Result: pass | concern | block`.
+以 `审核结果：pass | concern | block` 收尾。
 
-* `pass`: no blocking findings found; still state residual risks or test gaps.
-* `concern`: objective risks exist; consider whether to address them before continuing.
-* `block`: P0/P1 exists, or material is insufficient to judge critical risk.
+* `pass`：未发现阻断问题；仍需说明剩余风险或测试缺口。
+* `concern`：存在客观风险；应考虑是否在继续前处理。
+* `block`：存在 P0 或 P1，或者材料不足以判断关键风险。
 
-# Boundaries
+# 边界
 
-Do not suggest next route or perform implementation/design work. If no issues are found, say so clearly and mention remaining test gaps or residual risk.
+不建议下一个路由，也不执行实现或设计工作。没有发现问题时应明确说明，并提及剩余测试缺口或残余风险。

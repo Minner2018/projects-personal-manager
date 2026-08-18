@@ -3,74 +3,74 @@ name: multi-agent
 description: "route tokens: [M]"
 ---
 
-# Purpose & Scope
+# 目的与范围
 
-This task requires strict multi-agent handling, including delegation, independent review, a board, Git Trace, or risk control. If the main flow can split out delegable work, it must delegate. The main flow may answer directly only for one round when no useful subagent task can be separated.
+本任务要求严格使用多代理处理，包括委派、独立审核、任务看板、Git 追踪或风险控制。主流程只要能拆出适合委派的工作，就必须委派。只有无法分离出有价值的子代理任务时，主流程才能直接回答一轮。
 
-# Main Flow
+# 主流程
 
-The main flow owns clarification, decomposition, assignment, tracking, board/Git Trace, reviewer checks, and final decisions. Use skill `[D]` when discussion with the human is needed. Use skill `[R]` when review is needed.
+主流程负责澄清、拆解、分配、跟踪、任务看板与 Git 追踪、审核检查和最终决定。需要与用户讨论时使用 `[D]` 技能，需要审核时使用 `[R]` 技能。
 
-The main flow must not take over delegable or assigned planning, research, implementation, testing, or fixing. After assignment ,on that assigned path the main flow may only track progress, update the board, handle escalations.
+主流程不得接管适合委派或已经分配的规划、研究、实现、测试或修复。任务分配后，在对应路径上，主流程只能跟踪进度、更新看板和处理升级事项。
 
-# Sub agents & Route
+# 子代理与路由
 
-Only create subagents when need to use but no corresponding agent exists. Do not release or recreate them unless the human asks or the subagent is unusable.
+只有需要使用某类子代理且当前没有对应代理时才创建。除非用户要求或子代理已经不可用，否则不释放或重新创建。
 
-* `agent_1`: model `5.5-high`; use route `[P]` and `[R]` for planning, review, and risk detection; do not write code.
-* `agent_2`: model `5.5-medium`; use route `[T]` for file search, source/context gathering, research, and candidate drafts.
-* `agent_3`: model `5.5-medium`; use route `[I]` and `[F]` for implementation, tests, and fixes.
+* `agent_1`：模型 `5.5-high`；使用 `[P]` 和 `[R]` 进行规划、审核和风险识别；不编写代码。
+* `agent_2`：模型 `5.5-medium`；使用 `[T]` 进行文件搜索、源码与上下文收集、研究和候选稿编写。
+* `agent_3`：模型 `5.5-medium`；使用 `[I]` 和 `[F]` 进行实现、测试和修复。
 
-# Assignment
+# 任务分配
 
-Every assignment must include route, final goal, task, scope, acceptance criteria, and timebox.
+每项分配必须包含路由、最终目标、任务、范围、验收标准和时间盒。
 
-When `agent_1` uses `[P]`, the main flow must run two reviewed stages before implementation: first require a planning file and review it with `[R]`; then require a todo file and review it with `[R]`. For later assignments on the same task, include the file paths so key details are not lost in summaries. Do not assign `agent_3` to execute until the todo is reviewed.
+`agent_1` 使用 `[P]` 时，主流程必须在实现前完成两个经过审核的阶段：先要求提供规划文件并使用 `[R]` 审核；再要求提供 TODO 文件并使用 `[R]` 审核。后续为同一任务分配工作时，应附带文件路径，防止关键细节在摘要中丢失。TODO 未经审核前，不得让 `agent_3` 执行。
 
-If a timebox expires, check subagent state before deciding whether the delay is normal or exceptional. Wait for all relevant subagent results on the current flow path before summarizing and deciding the next step.
+时间盒到期时，先检查子代理状态，再判断延迟属于正常还是异常。汇总并决定下一步前，等待当前流程路径上的全部相关子代理结果。
 
-# Board
+# 任务看板
 
-Maintain:
+维护以下文件：
 
 ```text
 reading-resources/<(projects/<project>)-or-未分类>/YYYY-MM-DD-<task>-multi-agent-board.md
 ```
 
-Follow repository document-placement rules. Keep `Flow Log` before `Task Board History`. Record workflow-significant events: assignments, results, reviews, risks, human confirmations, Git Trace, exceptions, and main-flow decisions. Store references, short summaries, decisions, and open questions, not full subagent outputs.
+遵守仓库文档放置规则。“流程日志”必须位于“任务看板历史”之前。记录对工作流有重要影响的事件：任务分配、结果、审核、风险、用户确认、Git 追踪、异常和主流程决定。只保存引用、简短摘要、决定和待确认问题，不保存完整子代理输出。
 
-Task board snapshots must use:
+任务看板快照必须使用：
 
 ```text
-Agent | Task | Status | Timebox | Reviewer | Blocked By | Next
+代理 | 任务 | 状态 | 时间盒 | 审核者 | 阻塞原因 | 下一步
 ```
 
-Allowed status values: `idle`, `pending`, `running`, `reviewing`, `done`, `blocked`, `skipped`.
+允许的状态值：`idle`（空闲）、`pending`（等待）、`running`（运行中）、`reviewing`（审核中）、`done`（完成）、`blocked`（阻断）和 `skipped`（跳过）。
 
-# Git Trace
+# Git 追踪
 
-Git Trace applies when `[M]` includes code or repository changes. For discussion or research-only work, record Git Trace as N/A.
+当 `[M]` 包含代码或仓库变更时，必须使用 Git 追踪。仅讨论或研究的工作将 Git 追踪记录为 `N/A`。
 
-Before formal code work, ensure the board tracks the task branch; if not, discuss the base branch with the human, create one, and record it. Before each new code-generation round, commit the previous round's code changes in the concrete project path with a one-sentence message.
+正式代码工作开始前，确保任务看板记录了任务分支；尚未记录时，与用户讨论基础分支，创建任务分支并记录。每轮新代码生成前，在具体项目路径中用一句话提交上一轮代码变更。
 
-Ask the human if the board branch, current branch, or workspace state is unsafe or inconsistent.
+任务看板分支、当前分支或工作区状态不安全或不一致时，询问用户。
 
-# Review, Risk & Escalation
+# 审核、风险与升级
 
-`agent_1` reviews outputs from `agent_2` and `agent_3` before the main flow decides, including research conclusions, implementation/test/fix results, conflicts, scope changes, and risks.
+主流程作出决定前，由 `agent_1` 审核 `agent_2` 和 `agent_3` 的输出，包括研究结论、实现、测试与修复结果、冲突、范围变化和风险。
 
-`agent_1` proposes; the main flow decides. The main flow must explicitly use skill `[R]` to review `agent_1`'s own plans, todo files, and reviews, and must not delegate that review back to `agent_1`. The main flow must check whether `agent_1`'s output fits the human goal, confirmed boundaries, evidence quality, and risk posture before accepting, modifying, or rejecting it.
+`agent_1` 提出建议，主流程作出决定。主流程必须显式使用 `[R]` 技能审核 `agent_1` 自己的方案、TODO 文件和审核结果，不得将这项审核再次委派给 `agent_1`。接受、修改或拒绝输出前，主流程必须检查 `agent_1` 的输出是否符合用户目标、已确认边界、证据质量和风险取向。
 
-Low risk may proceed if recorded and not need to hanled. Medium, high, or unclear risk must escalate before continuing. Treat destructive, external, paid, credential/permission, privacy/security, production/deployment, migration, or irreversible changes as at least medium risk.
+低风险在记录后可以继续，无需处理。中风险、高风险或不明确风险必须在继续前升级。破坏性、外部、付费、凭据或权限、隐私或安全、生产或部署、迁移及不可逆变更至少按中风险处理。
 
-If a subagent needs sandbox-external permissions, it must report the command or action, reason, risk, and alternatives. The main flow decides whether to request human approval.
+子代理需要沙箱外权限时，必须报告命令或操作、原因、风险和替代方案。由主流程决定是否向用户申请批准。
 
-# Completion
+# 完成条件
 
-End when the goal is met, human decision is required, or one narrowed retry/review yields no useful output. State completed work, accepted/rejected/deferred subagent conclusions, remaining risks, and the next step or human decision needed.
+目标达成、需要用户决定，或者一次收窄范围的重试或复审仍没有产生有效结果时结束。说明已完成工作、已接受、拒绝或延期的子代理结论、剩余风险，以及所需的下一步或用户决定。
 
-# Rules
+# 规则
 
-* Keep the main flow responsible for coordination and confirmation-gated actions.
-* Use only needed subagents and never bypass required `agent_1` review.
-* Do not override explicit human decisions or change the main goal without reporting the risk and getting confirmation.
+* 主流程始终负责协调和需要确认的操作。
+* 只使用必要的子代理，绝不绕过规定的 `agent_1` 审核。
+* 不覆盖用户的明确决定，也不在未报告风险并获得确认的情况下改变主要目标。

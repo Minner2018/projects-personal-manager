@@ -3,43 +3,43 @@ name: work
 description: "route tokens: [W], [W-C]"
 ---
 
-# Purpose
+# 目的
 
-Start or continue a goal-mode work sequence for a named task. Use `[P]` for planning artifacts, `[R]` for review, and `[I]` for implementation.
+为具名任务启动或继续 goal 模式工作序列。规划产物使用 `[P]`，审核使用 `[R]`，实现使用 `[I]`。
 
-# Core Workflow
+# 核心工作流程
 
-For `[W] <task>`, create a goal with this sequence:
+对于 `[W] <任务>`，按以下顺序创建 goal：
 
-1. `[P]` discussion draft -> technical design; `[R]` review; update state; set goal to `blocked`.
-2. `[W-C]`; `[P]` discussion draft + technical design -> todo; `[R]` review; update state; set goal to `blocked`.
-3. `[W-C]`; `[I]` discussion draft + technical design + todo -> implementation; `[R]` review; report result.
+1. 使用 `[P]` 将讨论稿转为技术设计；使用 `[R]` 审核；更新状态；将 goal 设为 `blocked`。
+2. 使用 `[W-C]` 继续；使用 `[P]` 将讨论稿和技术设计转为 TODO；使用 `[R]` 审核；更新状态；将 goal 设为 `blocked`。
+3. 使用 `[W-C]` 继续；使用 `[I]` 根据讨论稿、技术设计和 TODO 完成实现；使用 `[R]` 审核；报告结果。
 
-# State & Resume
+# 状态与恢复
 
-Maintain a temporary state file:
+维护一个临时状态文件：
 
 ```text
 reading-resources/未分类/YYYY-MM-DD-<task>-work-state.md
 ```
 
-Before each `blocked`, update the state file and report: current stage, artifact paths, review result, continuation safety, next action, resume command, and suggested route for blocking findings. Delete the state file when the work goal is complete.
+每次设为 `blocked` 前，更新状态文件并报告：当前阶段、产物路径、审核结果、继续执行的安全性、下一步行动、恢复命令，以及阻断问题建议使用的路由。工作 goal 完成后删除状态文件。
 
-For `[W-C]`, read the state file and relevant artifacts before continuing. If no task is specified, resume the only `*-work-state.md`; if multiple exist, ask the user to choose; if none exist, report no active blocked work goal. Do not restart from Stage 1 unless explicitly requested.
+对于 `[W-C]`，继续前先读取状态文件和相关产物。未指定任务时：只有一个 `*-work-state.md` 就恢复它；存在多个时请用户选择；一个也没有时报告当前不存在被阻断的工作 goal。除非用户明确要求，否则不要从阶段 1 重新开始。
 
-# Artifact Naming
+# 产物命名
 
-Do not rename an existing discussion draft; record its real path in the state file. Use:
+不要重命名现有讨论稿；在状态文件中记录其真实路径。其他产物使用：
 
 * `reading-resources/未分类/YYYY-MM-DD-<task>-design.md`
 * `reading-resources/未分类/YYYY-MM-DD-<task>-todo.md`
 * `reading-resources/未分类/YYYY-MM-DD-<task>-work-state.md`
 
-# Rules
+# 规则
 
-* Do not replace `[P]`, `[R]`, or `[I]`; delegate stage behavior to those skills.
-* If the task name is missing for `[W]`, ask for it.
-* If no discussion draft exists, do not start Stage 1. Ask the user to create or complete one with `[D]`, or provide an existing discussion draft path.
-* If `[R]` finds blocking issues, set the next action to waiting for the user to handle or accept the findings. Do not continue to the next stage automatically.
-* Do not perform implementation during Stage 1 or Stage 2.
-* Do not set the goal to `blocked` after Stage 3 unless explicitly requested or unresolved blocking issues remain.
+* 不替代 `[P]`、`[R]` 或 `[I]`；将各阶段行为交给对应技能。
+* `[W]` 缺少任务名称时，向用户询问。
+* 不存在讨论稿时，不要启动阶段 1。请用户使用 `[D]` 创建或完善讨论稿，或者提供现有讨论稿路径。
+* `[R]` 发现阻断问题时，将下一步设为等待用户处理或接受问题，不要自动进入下一阶段。
+* 阶段 1 和阶段 2 不执行实现。
+* 阶段 3 后不要将 goal 设为 `blocked`，除非用户明确要求，或者仍有未解决的阻断问题。

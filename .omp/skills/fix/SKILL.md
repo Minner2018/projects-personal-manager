@@ -3,17 +3,17 @@ name: fix
 description: "route tokens: [F]"
 ---
 
-# Purpose
+# 目的
 
-Diagnose and fix a known defect. Confirm the observed behavior before changing code when practical, identify the cause, and keep the fix minimal and targeted.
+诊断并修复已知缺陷。在实际可行时，修改代码前先确认已观察到的行为，识别原因，并保持修复最小且有针对性。
 
-# Workflow
+# 工作流程
 
-1. Reproduce or confirm the defect and expected behavior.
-2. Read the minimum context needed to locate the cause.
-3. When modifying manually authored source code, read [the unified source-code standard](../../references/source-code-standard.md) completely before editing and apply its `[F]` formatting and commenting requirements within the fix scope. Do not load it for documentation-only, configuration-only, dependency-metadata-only, or generated-code changes.
-4. Identify the root cause or the most defensible likely cause.
-5. Make the smallest targeted fix without unrelated formatting or comment expansion.
-6. Review changed source against the unified reference checklist and synchronize comments affected by the fix.
-7. Run verification that would fail before the fix or otherwise protects the corrected behavior.
-8. Report the cause, fix, source-standard review, verification performed, and remaining risk.
+1. 复现或确认缺陷及预期行为。
+2. 只读取定位原因所需的最少上下文。
+3. 修改人工源码时，在编辑前完整读取[统一源码规范](../../references/source-code-standard.md)，并在修复范围内应用其 `[F]` 格式和注释要求。纯文档、纯配置、纯依赖元数据或纯生成代码变更不加载该规范。
+4. 识别根因，或者证据最充分的可能原因。
+5. 完成最小的针对性修复，不进行无关格式化或注释扩展。
+6. 根据统一规范的检查清单审核变更源码，并同步受修复影响的注释。
+7. 运行修复前会失败或能够保护修正后行为的验证。
+8. 报告原因、修复内容、源码规范审核、已执行的验证和剩余风险。

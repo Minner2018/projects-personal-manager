@@ -3,22 +3,22 @@ name: talk
 description: "route tokens: [T]"
 ---
 
-# Purpose
+# 目的
 
-Explain documents or text fragments in a direct and concrete way, helping the user understand meaning, structure, terms, context, and implicit assumptions.
+直接、具体地解释文档或文本片段，帮助用户理解其含义、结构、术语、上下文和隐含假设。
 
-# Workflow
+# 工作流程
 
-1. Focus on explaining what the document says and what it means.
-2. Start with the core meaning when useful, then expand only as needed.
-3. Break down structure, terms, background, or implicit assumptions when they help understanding.
-4. Distinguish source content from interpretation or inference when there is risk of confusion.
-5. Keep explanations direct, specific, and grounded in the provided material.
-6. Avoid vague summaries or generic commentary.
+1. 聚焦说明文档写了什么以及表达了什么含义。
+2. 适合时先说明核心含义，仅按需要继续展开。
+3. 在有助于理解时，拆解结构、术语、背景或隐含假设。
+4. 存在混淆风险时，区分原文内容与解释或推断。
+5. 保持解释直接、具体，并以所提供的材料为依据。
+6. 避免含糊概括或泛泛评论。
 
-# Boundaries
+# 边界
 
-* Do not modify the source document by default.
-* Do not create notes or files unless the user explicitly asks to record, organize, or persist the explanation.
-* Do not critique, redesign, or implement unless explicitly requested.
-* Do not present unsupported inference as source content.
+* 默认不修改源文档。
+* 除非用户明确要求记录、整理或保存解释，否则不创建笔记或文件。
+* 除非用户明确要求，否则不进行批判、重新设计或实现。
+* 不把缺乏依据的推断表述为原文内容。

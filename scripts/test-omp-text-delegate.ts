@@ -237,26 +237,28 @@ async function testCallerId(): Promise<void> {
 
 async function testCapabilityAndSkillBoundary(): Promise<void> {
   const agents = await readFile(path.join(projectRoot, "AGENTS.md"), "utf8");
-  assert.match(agents, /external `omp` CLI process, not a skill/);
-  assert.match(agents, /No `\[X\]` route token is required/);
-  assert.match(agents, /absence of a route token must never be used as a reason/);
-  assert.match(agents, /does not govern internal capabilities, terminal commands, or tool use/);
-  assert.match(agents, /normal invocations should use the minimal form/);
-  assert.match(agents, /performs a local preflight time estimate/);
-  assert.match(agents, /most recent valid cumulative checkpoint as `partial`/);
-  assert.match(agents, /grants standing repository-level authorization/);
-  assert.match(agents, /remains valid until the owner explicitly revokes it/);
-  assert.match(agents, /without requesting authorization again for each task, file, or investigation/);
-  assert.match(agents, /does not expand which local paths AI may read/);
-  assert.match(agents, /satisfies the repository-owner consent check/);
-  assert.match(agents, /decides autonomously whether OMP is appropriate/);
-  assert.match(agents, /must initiate the OMP invocation or the host approval flow/);
-  assert.match(agents, /must not claim that a safety policy blocked OMP based only on inference/);
-  assert.match(agents, /only when the host tool or execution environment returns a concrete permission requirement or denial for that initiated action/);
-  assert.match(agents, /request it through the host's approval mechanism instead of silently falling back/);
-  assert.match(agents, /Use direct CMM CLI for current code structure/);
-  assert.match(agents, /Use Repowise for Git-history-informed/);
-  assert.match(agents, /No route token is required, and using either capability/);
+  assert.match(agents, /外部 `omp` CLI 进程，不是/);
+  assert.match(agents, /不需要 `\[X\]` 路由标记/);
+  assert.match(agents, /不得以缺少路由标记为由拒绝调用该能力/);
+  assert.match(agents, /不管理内部能力、终端命令或工具使用/);
+  assert.match(agents, /普通调用应使用最小形式/);
+  assert.match(agents, /包装器会在本地进行调用前耗时预估/);
+  assert.match(agents, /最近一次有效的累积检查点作为 `partial`/);
+  assert.match(agents, /仓库所有者已授予持续有效的仓库级授权/);
+  assert.match(agents, /直到所有者明确撤销前持续有效/);
+  assert.match(agents, /无需再为每个任务、文件或调查重复申请授权/);
+  assert.match(agents, /不会扩大 AI 可读取的本地路径范围/);
+  assert.match(agents, /满足将可读仓库文本发送给当前 OMP 提供商/);
+  assert.match(agents, /AI 仍自主决定 OMP 是否适合当前任务/);
+  assert.match(agents, /必须发起 OMP 调用或宿主审批流程/);
+  assert.match(agents, /不得仅凭推断声称安全策略阻止了 OMP/);
+  assert.match(agents, /仅在宿主工具或执行环境返回具体的权限要求或拒绝时/);
+  assert.match(agents, /通过宿主审批机制申请，而不是静默退回直接阅读/);
+  assert.match(agents, /直接使用 CMM CLI 调查当前代码结构/);
+  assert.match(agents, /使用 Repowise 调查 Git 历史相关问题/);
+  assert.match(agents, /无需路由标记，使用它们也不会激活或切换技能/);
+  assert.match(agents, /重新加载与 X 匹配的技能，丢弃偏离的工作流状态/);
+  assert.match(agents, /退出当前技能，随后按普通方式继续/);
 
   const prompt = await readFile(
     path.join(projectRoot, ".omp", "prompts", "text-investigator.md"),
@@ -332,6 +334,37 @@ async function testCapabilityAndSkillBoundary(): Promise<void> {
     path.resolve(mcpConfig.mcpServers?.codebase_memory?.cwd ?? ""),
     projectRoot,
   );
+}
+
+/**
+ * 验证全部 OMP 技能仍声明稳定的名称和路由标记，并已提供中文正文。
+ */
+async function testSkillRoutingMetadata(): Promise<void> {
+  const expectedSkills: Array<{ name: string; routeDescription: string }> = [
+    { name: "talk", routeDescription: "route tokens: [T]" },
+    { name: "discuss", routeDescription: "route tokens: [D]" },
+    { name: "plan", routeDescription: "route tokens: [P]" },
+    { name: "review", routeDescription: "route tokens: [R]" },
+    { name: "implement", routeDescription: "route tokens: [I]" },
+    { name: "fix", routeDescription: "route tokens: [F]" },
+    { name: "multi-agent", routeDescription: "route tokens: [M]" },
+    { name: "work", routeDescription: "route tokens: [W], [W-C]" },
+  ];
+
+  // 逐个读取技能文件，同时验证发现元数据和正文语言。
+  for (const expectedSkill of expectedSkills) {
+    const skillSource = await readFile(
+      path.join(projectRoot, ".omp", "skills", expectedSkill.name, "SKILL.md"),
+      "utf8",
+    );
+    const metadata = skillSource.match(
+      /^---\r?\nname: ([^\r\n]+)\r?\ndescription: "([^"]+)"\r?\n---\r?\n([\s\S]*)$/,
+    );
+    assert.ok(metadata, `${expectedSkill.name} 缺少有效的 frontmatter`);
+    assert.equal(metadata[1], expectedSkill.name);
+    assert.equal(metadata[2], expectedSkill.routeDescription);
+    assert.match(metadata[3], /[\u3400-\u9fff]/, `${expectedSkill.name} 缺少中文正文`);
+  }
 }
 
 async function runFake(
@@ -749,6 +782,7 @@ async function main(): Promise<void> {
     ["路径边界", testPathBoundary],
     ["调用者标识", testCallerId],
     ["能力与技能边界", testCapabilityAndSkillBoundary],
+    ["技能路由元数据", testSkillRoutingMetadata],
     ["可信可执行文件解析", testTrustedExecutableResolution],
     ["启动失败结构化诊断", testStructuredStartupFailure],
     ["RPC 成功", testSuccessfulRpc],
