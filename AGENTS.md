@@ -19,6 +19,14 @@ Put generated documents under the matching `reading-resources/<project>/` folder
 If the matching folder does not exist, create it.
 Use `reading-resources/未分类/` only when ownership is unclear.
 
+## Source Code Standard
+
+`.omp/references/source-code-standard.md` is the repository-wide standard for manually authored source code, not a skill. It applies whether or not a skill under `.omp/skills/` is active and does not require a route token.
+
+Before creating or modifying manually authored production or test source code, read that standard completely and apply its common formatting, import, language-adaptation, and verification requirements to every source file changed by the task. When no implementation or fix skill is active, select the comment profile by task intent: use `[I]` for feature development, refactoring, and other general implementation work; use `[F]` for a localized defect fix. When an implementation or fix skill is active, use the profile required by that skill.
+
+Do not load the source-code standard for documentation-only, configuration-only, dependency-metadata-only, or generated-code-only changes. A skill may add workflow requirements, but it does not replace or weaken this repository-wide source-code standard.
+
 ## OMP Text Reading Capability
 
 Here, OMP means the external `omp` CLI process, not a skill under `.omp/skills/`.
