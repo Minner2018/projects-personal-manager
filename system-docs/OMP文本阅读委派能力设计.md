@@ -34,7 +34,7 @@
 - 需要修改文件、运行构建、浏览网页或分析非文本材料。
 - 用户明确禁止调用 OMP。
 
-主 AI 的调用决策必须依据任务规模、可分离性、预期上下文占用、调用成本和数据传输授权。Skill Routing 只管理 `.omp/skills/` 下 skill 的激活、切换和重载，不管理该能力、终端命令或普通工具调用。
+主 AI 的调用决策必须依据任务规模、可分离性、预期上下文占用和调用成本。仓库级数据传输授权已经长期授予，不是每次调用时重新判断的条件。Skill Routing 只管理 `.omp/skills/` 下 skill 的激活、切换和重载，不管理该能力、终端命令或普通工具调用。
 
 因此：
 
@@ -61,25 +61,27 @@
 
 多个 AI 通过同一个仓库调用该能力时，包装器使用本地 SQLite 事务租约协调容量：
 
+- 阅读代理通过进程级 `--model=litellm/deepseek-v4-flash-private` 固定模型。该模型不声明思考等级支持，因此传入 `--thinking=off`；不写入或改变日常 oh-my-pi 默认模型。
 - 每个稳定 `callerId` 同时最多运行 1 个 OMP；重复调用立即以 `caller_busy` 失败，不能更换 ID 规避。
-- 本仓库全局同时最多运行 3 个 OMP；不同 caller 在容量已满时排队。
-- 只有取得调用者槽和全局槽后才启动 OMP 计时，因此排队时间不消耗调查时间。
+- 本仓库全局同时最多运行 3 个 OMP；容量已满时立即以 `capacity_full` 失败，由 AI 告知用户“OMP 队列已满”并稍后重试。
+- 调用者槽和全局槽在同一个 SQLite 事务内原子分配；不能同时取得两个槽位时不创建任何租约。容量检查先于材料预估，满载调用不会执行无用扫描。
 - 调用完成、失败或超时后，在 `finally` 中释放两个槽位。
 - 租约每 10 秒刷新心跳；心跳过期且包装器、OMP 子进程均不存在时可以回收。
 - 槽位分配、陈旧回收和释放均在 SQLite `BEGIN IMMEDIATE` 事务中完成，不存在“校验后删除文件”导致误删新租约的 TOCTOU 窗口。
 - 包装器启动 OMP 后立即把子进程 PID 写入租约；即使包装器被强制终止，只要 OMP 子进程仍在运行，就不会提前释放全局容量。
-- 租约具有最长寿命，当前为 7200 秒。它覆盖最长排队和最长调查时间，并在 PID 复用或权限探测误判时防止槽位永久泄漏。
+- 租约具有最长寿命，当前为 4500 秒。它覆盖 3600 秒自定义调查上限和回收余量，并在 PID 复用或权限探测误判时防止槽位永久泄漏。
 
 仓库配置位于 `.omp/omp-read-config.json`：
 
 ```json
 {
+  "model": "litellm/deepseek-v4-flash-private",
+  "thinking": "off",
   "maxGlobalConcurrent": 3,
   "maxPerCallerConcurrent": 1,
-  "maxQueueSeconds": 600,
   "heartbeatSeconds": 10,
   "staleAfterSeconds": 30,
-  "maxLeaseSeconds": 7200
+  "maxLeaseSeconds": 4500
 }
 ```
 
@@ -106,7 +108,15 @@ read, grep, glob
 
 ## 6. 请求协议
 
-调用命令：
+普通调用使用最小命令，不需要创建请求文件：
+
+```powershell
+bun run omp:read -- --objective "梳理登录鉴权调用链"
+bun run omp:read -- --objective "梳理登录鉴权调用链" --root projects/example/src --profile auto
+bun run omp:read -- --objective "梳理登录鉴权调用链" --estimate-only
+```
+
+只有需要自定义材料类型、问题和输出限制时才使用高级 JSON 请求：
 
 ```powershell
 bun run omp:read -- --request <请求文件.json>
@@ -119,6 +129,7 @@ bun run omp:read -- --request <请求文件.json>
   "schemaVersion": 1,
   "callerId": "codex:stable-task-id",
   "objective": "梳理登录鉴权调用链",
+  "profile": "auto",
   "searchRoots": ["projects/example/src"],
   "materialTypes": ["code", "markdown", "log"],
   "extensions": [".properties"],
@@ -137,8 +148,9 @@ bun run omp:read -- --request <请求文件.json>
 
 字段说明：
 
-- `callerId`：必填的稳定 AI 调用者标识；也可通过 `PPM_AI_CALLER_ID` 提供。同一 AI 任务或对话中的多次调用必须复用，不能用随机 ID 绕过单 caller 上限。
+- `callerId`：实际调查必填的稳定 AI 调用者标识；最小 CLI 可通过 `PPM_AI_CALLER_ID` 或 `--caller-id` 提供，JSON 模式可写入字段。同一 AI 任务或对话中的多次调用必须复用，不能用随机 ID 绕过单 caller 上限。`--estimate-only` 只扫描本地元数据，不占用 OMP 容量，因此可以省略。
 - `objective`：必填，独立且可验证的调查目标。
+- `profile`：可选，支持 `auto`、`quick`、`standard`、`deep`，默认 `auto`。设置自定义 `limits` 后不再自动覆盖时间和输出限制。
 - `searchRoots`：可选，项目内的优先搜索起点，默认仓库根目录。
 - `materialTypes`：可选，支持 `code`、`markdown`、`log`、`config`、`text`。
 - `extensions`：可选，补充关注的文本扩展名。
@@ -147,6 +159,18 @@ bun run omp:read -- --request <请求文件.json>
 - `limits`：可选，时间和输出规模限制。
 
 `searchRoots` 必须存在且不能越出仓库根目录。请求文件本身可以位于系统临时目录。
+
+时间档位初始限制：
+
+| 档位 | 硬时间上限 | findings 上限 | 输出字符上限 | 初始适用范围 |
+| --- | ---: | ---: | ---: | --- |
+| `quick` | 360 秒 | 12 | 12000 | 范围明确、候选文件较少 |
+| `standard` | 600 秒 | 30 | 30000 | 常规跨文件调查 |
+| `deep` | 1200 秒 | 50 | 50000 | 大范围、跨模块或复杂关系调查 |
+
+首检查点预估区间分别为：`quick` 90–180 秒、`standard` 150–300 秒、`deep` 240–480 秒。区间上界是包装器要求范围定位阶段停止扩张并返回累计检查点的时刻；OMP 若提前完成会立即返回，不会等待截止时间。
+
+调用前预估只扫描候选文件元数据，不读取正文。判断依据包括候选文件数量、文本总大小、搜索根数量、问题数量和调用链、跨模块、差异、流程、根因、架构等关系复杂度信号。输出时间区间和可信度，不提供虚假的精确完成秒数。扫描受到条目数和两秒时间限制；范围未扫描完时降低可信度并推荐 `deep`。
 
 ## 7. 结果协议
 
@@ -183,9 +207,21 @@ bun run omp:read -- --request <请求文件.json>
     "exitCode": 0,
     "signal": null,
     "callerId": "codex:stable-task-id",
-    "queueDurationMs": 25,
     "callerSlot": 0,
-    "globalSlot": 2
+    "globalSlot": 2,
+    "effectiveProfile": "standard",
+    "preflightEstimate": {
+      "recommendedProfile": "standard",
+      "firstCheckpointSeconds": { "min": 150, "max": 300 },
+      "totalSeconds": { "min": 180, "max": 600 },
+      "confidence": "medium"
+    },
+    "revisedEstimate": {
+      "remainingSeconds": { "min": 120, "max": 300 },
+      "confidence": "medium"
+    },
+    "checkpointCount": 2,
+    "checkpointDurationsMs": [68000, 154000]
   }
 }
 ```
@@ -193,29 +229,32 @@ bun run omp:read -- --request <请求文件.json>
 状态值：
 
 - `completed`：调查完成且输出有效。
-- `partial`：调查只完成一部分，但输出有效。
+- `partial`：调查只完成一部分，但输出有效；也用于后续阶段超时或异常时返回最近有效累计检查点。
 - `failed`：OMP 未启动、拒绝任务或异常退出。
-- `timeout`：超过任务时间限制。
+- `timeout`：超过任务时间限制，且在超时前未能形成任何有效检查点。
 - `invalid_output`：OMP 最终输出不符合 JSON 协议。
 
 容量获取失败仍使用 `failed` 状态，并通过 `errorCode` 区分：
 
 - `caller_busy`：同一 caller 已达到并发上限，立即失败。
-- `capacity_timeout`：等待全局槽超过配置时间。
+- `capacity_full`：三个全局槽均被占用，立即失败。
 - `capacity_config_invalid`：仓库并发配置无效。
 - `capacity_unavailable`：文件系统等其他原因导致容量不可用。
 
-`durationMs` 只统计取得容量后的 OMP 执行时间，`queueDurationMs` 单独记录排队时间。
+`durationMs` 统计取得容量后的 OMP 执行时间。`preflightEstimate` 记录本地静态预估，首个有效 `partial` 检查点后通过实际耗时、已读文件和结论数量生成 `revisedEstimate`。`checkpointCount` 和 `checkpointDurationsMs` 用于判断阶段交付是否有效；当前版本不把未经校准的历史样本伪装成高置信度预测。
 
 ## 8. 调用和失败策略
 
 - AI 调用前简短告知用户，但正常只读调用不需要再次请求确认。
 - 仓库所有者已明确授予持续有效的仓库级外传授权：为了执行本能力，可以把 AI 原本有权读取的仓库文本发送给当前配置的 OMP 模型提供方。该授权持续到仓库所有者明确撤销为止，不需要按任务、文件或调查再次取得授权。
 - 这项授权只覆盖 OMP 的只读文本调查，不扩大 AI 可读取的本地路径，也不授权写入、命令执行、网络访问或其他非只读行为。
-- 宿主环境额外要求的提供方或数据传输审批仍然有效，AI 不得绕过。当 OMP 明显更合适但宿主要求运行时审批时，AI 应提出该审批，而不是静默改为直接阅读；审批被拒绝后不得间接规避。
+- 上述授权已经满足仓库所有者对外传的同意要求。AI 不得把一般性的外部模型、隐私、安全或数据传输提醒重新解释成“尚未授权”。
+- AI 仍然根据任务规模等条件自主判断是否使用 OMP。一旦决定使用，就应发起 OMP 调用或宿主审批流程，不得仅凭推测声称被安全策略拦截。只有宿主工具或执行环境对已发起的操作返回了明确权限要求或拒绝，才视为宿主额外审批。此时 AI 应通过宿主审批机制提出请求，而不是静默改为直接阅读；审批被拒绝后应报告具体结果且不得间接规避。
 - 默认继承 OMP 当前配置的模型和认证，不在项目中保存密钥。
 - 第一版允许本仓库最多同时运行 3 个 OMP，但同一 caller 同时最多运行 1 个。容量配置采用数值形式，未来可以按需提高单 caller 上限。
-- 调查采用软、硬两级截止：包装器通常在硬上限前预留约 20%（最多 120 秒）的收尾时间；不足一分钟的短任务至少预留一半。软截止通过 OMP RPC `abort_and_prompt` 终止正在扩张的调查轮次，并启动一个只负责返回已有证据的收尾轮次。未完成时应返回 `partial`，而不是继续调查到硬超时。
+- 调查采用“范围定位检查点 + 关键证据验证”两阶段协议。第一阶段最多选择少量高价值文件并返回合法的累计 `partial` 或 `complete` 报告；只有仍需验证且剩余时间足够时才进入第二阶段。第二阶段必须返回覆盖上一轮有效内容的累计报告，不能只返回增量。
+- 包装器始终保存最近一次有效检查点。第二阶段超时、输出无效、被拒绝或异常退出时返回最近检查点，并补充失败原因；后续 `partial` 若遗漏上一检查点的已读文件或减少 findings，则视为非累计退化报告，不允许覆盖信息更完整的检查点。只有首个检查点之前超时才返回 `timeout`。这使主 AI 可以从已验证范围继续工作，而不是从头重复调查。
+- 调查仍采用软、硬两级截止：包装器通常在硬上限前预留约 20%（最多 120 秒）的收尾时间；不足一分钟的短任务至少预留一半。软截止通过 OMP RPC `abort_and_prompt` 终止当前阶段，并启动一个只负责返回已有证据的收尾轮次。
 - 如果 OMP 拒绝 `abort_and_prompt`，包装器会退回 `steer` 收尾。硬截止由包装器负责；传给 OMP CLI 的 `--max-time` 晚 5 秒，仅作为子进程级保险，避免它抢先退出造成状态误判。
 - 已解析出的有效报告优先于随后发生的子进程退出或硬超时；若 OMP 忽略终止指令，包装器也会在短暂宽限期后主动结束等待，避免调用永久悬挂。
 - 调查提示词要求先定位、再验证、最后报告；完成标准是用证据回答问题，不是遍历所有候选文件。重复搜索、无目标的穷举阅读和为了凑满 findings 而继续扩张范围都应避免。
@@ -243,11 +282,14 @@ bun run omp:read -- --request <请求文件.json>
 | 明确类名和字段名、只需读取少量文件 | 可以直接检索；理由是任务小且直接处理更高效 |
 | `[P]` 或 `[R]` 已激活，同时需要大型阅读 | 可以调用 OMP；调用前后 active skill 不变 |
 | 当前任务没有单独的项目级授权 | 使用仓库级长期授权自主调用，不询问按任务或按文件的授权 |
+| 仅存在一般性的外部模型、隐私或数据传输警告 | 视为仓库授权已满足；若自主判断使用 OMP，则发起调用或审批流程，不得仅凭推测声称安全策略拦截 |
 | OMP 明显更合适，但宿主要求运行时审批 | 向用户提出宿主审批，不静默降级为直接阅读 |
 | 宿主审批被拒绝 | 服从审批结果，不得绕过或采用间接方式规避 |
 | OMP 返回缺少证据或存在不确定性 | 主 AI 抽查或补充调查，不把报告直接当作事实源 |
 | 调查达到软截止但尚未覆盖全部范围 | 停止新的工具调用，以 `partial` 和 `uncertainties` 返回已有证据 |
+| 第一阶段形成检查点，第二阶段达到硬截止 | 返回最近有效累计检查点和超时说明，状态为 `partial` |
+| 首个检查点前达到硬截止 | 返回 `timeout`；主 AI 可缩小目标后决定是否重试 |
 | 同一 caller 已有 OMP 在运行 | 返回 `failed/caller_busy`，不得更换 callerId 绕过 |
-| 三个不同 caller 已占满全局容量 | 第四个 caller 排队；取得槽位后才开始调查计时 |
+| 三个不同 caller 已占满全局容量 | 第四个 caller 立即返回 `failed/capacity_full`，AI 告知用户“OMP 队列已满” |
 | 包装器异常退出但 OMP 子进程仍在运行 | 继续保留槽位；子进程退出且心跳过期后回收 |
 | 陈旧租约中的 PID 被复用 | 达到最长租约寿命后强制回收，不永久占用容量 |
