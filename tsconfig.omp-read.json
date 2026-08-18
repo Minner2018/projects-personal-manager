@@ -5,6 +5,7 @@
   },
   "include": [
     "scripts/omp-text-delegate.ts",
+    "scripts/omp-read-estimate.ts",
     "scripts/omp-read-capacity.ts",
     "scripts/test-omp-text-delegate.ts",
     "scripts/test-omp-read-capacity.ts",

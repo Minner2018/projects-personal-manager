@@ -1,0 +1,40 @@
+# 仅供 scripts/omp-text-delegate.ts 通过 --config 临时叠加；不改变日常 OMP 配置。
+# 项目原生 .omp/mcp.json 仍会加载。禁用 Codex 发现源，避免包装器顺带连接
+# 用户全局 ~/.codex/config.toml 中与本次只读调查无关的 MCP。
+disabledProviders:
+  - codex
+
+tools:
+  approvalMode: always-ask
+  # OMP 只读 MCP 自动审批的唯一事实来源；测试直接解析并校验本节，不再维护代码副本。
+  approval:
+    mcp__repowise_search_codebase: allow
+    mcp__repowise_get_answer: allow
+    mcp__repowise_get_architecture: allow
+    mcp__repowise_get_blast_radius: allow
+    mcp__repowise_get_change_risk: allow
+    mcp__repowise_get_risk: allow
+    mcp__repowise_get_context: allow
+    mcp__repowise_get_dead_code: allow
+    mcp__repowise_get_health: allow
+    mcp__repowise_get_overview: allow
+    mcp__repowise_list_repos: allow
+    mcp__repowise_get_symbol: allow
+    mcp__repowise_get_why: allow
+    mcp__codebase_memory_search_graph: allow
+    mcp__codebase_memory_query_graph: allow
+    mcp__codebase_memory_trace_path: allow
+    mcp__codebase_memory_get_code_snippet: allow
+    mcp__codebase_memory_get_graph_schema: allow
+    mcp__codebase_memory_get_architecture: allow
+    mcp__codebase_memory_search_code: allow
+    mcp__codebase_memory_list_projects: allow
+    mcp__codebase_memory_index_status: allow
+    mcp__codebase_memory_check_index_coverage: allow
+    mcp__codebase_memory_detect_changes: allow
+
+    # 双重防线：analysis profile 正常不会暴露这些工具；即使未来版本行为变化也拒绝。
+    mcp__codebase_memory_index_repository: deny
+    mcp__codebase_memory_delete_project: deny
+    mcp__codebase_memory_manage_adr: deny
+    mcp__codebase_memory_ingest_traces: deny

@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "repowise": {
+      "type": "stdio",
+      "command": "C:/Users/lenovo/AppData/Roaming/Python/Python312/Scripts/repowise.exe",
+      "args": ["mcp"],
+      "cwd": "D:/projects-personal-manager/projects",
+      "timeout": 180000,
+      "enabled": true
+    },
+    "codebase_memory": {
+      "type": "stdio",
+      "command": "C:/Users/lenovo/AppData/Local/Programs/codebase-memory-mcp/codebase-memory-mcp.exe",
+      "args": ["--tool-profile=analysis"],
+      "cwd": "D:/projects-personal-manager",
+      "timeout": 180000,
+      "enabled": true
+    }
+  }
+}
